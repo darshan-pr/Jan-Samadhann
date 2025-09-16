@@ -339,7 +339,23 @@ export default function Dashboard() {
 
           {/* Feed */}
           <div className="divide-y divide-gray-800">
-            {!posts || posts.length === 0 ? (
+            {posts === undefined ? (
+              <div className="p-8 text-center">
+                <div className="animate-pulse space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex space-x-4 p-4">
+                      <div className="w-12 h-12 bg-gray-700 rounded-full"></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-700 rounded w-1/4"></div>
+                        <div className="h-3 bg-gray-700 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-700 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-gray-400 mt-4">Loading posts...</p>
+              </div>
+            ) : posts.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                   <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">

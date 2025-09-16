@@ -341,10 +341,10 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
         </div>
 
         {/* Content */}
-        <div className="p-3 lg:p-5  overflow-y-auto max-h-[80vh] max-w-[50vh]">
-          <div className="flex space-x-3 lg:space-x-4">
-            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-sm lg:text-lg font-bold">{user.name.charAt(0).toUpperCase()}</span>
+        <div className="p-3 lg:p-4 overflow-y-auto max-h-[75vh]">
+          <div className="flex space-x-2 lg:space-x-3">
+            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-xs lg:text-sm font-bold">{user.name.charAt(0).toUpperCase()}</span>
             </div>
             <div className="flex-1">
               <div className="relative">
@@ -352,15 +352,15 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
                   value={postContent}
                   onChange={(e) => setPostContent(e.target.value)}
                   placeholder="What's happening in your community?"
-                  className="w-full bg-gray-800/50 border border-gray-700 rounded-2xl p-3 lg:p-4 text-lg lg:text-xl placeholder-gray-500 resize-none outline-none focus:border-blue-500 transition-all duration-200 min-h-[100px] lg:min-h-[120px]"
+                  className="w-full bg-gray-800/50 border border-gray-700 rounded-xl p-3 text-sm lg:text-base placeholder-gray-500 resize-none outline-none focus:border-blue-500 transition-all duration-200 min-h-[80px] lg:min-h-[100px]"
                   maxLength={500}
                 />
                 {!postContent && (
                   <button
                     onClick={() => setShowAIGenerator(true)}
-                    className="absolute bottom-4 right-4 bg-purple-600 hover:bg-purple-700 transition-colors rounded-full p-2"
+                    className="absolute bottom-2 right-2 bg-purple-600 hover:bg-purple-700 transition-colors rounded-full p-1.5 lg:p-2"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                   </button>
@@ -408,49 +408,49 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
               )}
 
               {/* Location Section */}
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center space-x-2 mb-3">
-                  <div className="flex items-center space-x-1 text-sm text-blue-400">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className="flex items-center space-x-1 text-xs text-blue-400">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     </svg>
                     <span>Auto-detect Location</span>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
                   <input
                     type="text"
                     value={location}
                     readOnly
                     placeholder="Location will appear here..."
-                    className="flex-1 bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 transition-colors"
+                    className="flex-1 bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500 transition-colors"
                   />
                   <button
                     onClick={handleGetLocation}
                     disabled={isLocationLoading}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors rounded-xl px-4 py-3 text-sm font-medium flex items-center space-x-2"
+                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors rounded-lg px-3 py-2 text-xs font-medium flex items-center space-x-1"
                   >
                     {isLocationLoading ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       </svg>
                     )}
-                    <span>Detect</span>
+                    <span className="hidden sm:inline">Detect</span>
                   </button>
                 </div>
                 
                 {locationError && (
-                  <p className="text-red-400 text-sm">{locationError}</p>
+                  <p className="text-red-400 text-xs">{locationError}</p>
                 )}
                 
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-2">
                   <select
                     value={selectedReportType}
                     onChange={(e) => setSelectedReportType(e.target.value)}
-                    className="bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 transition-colors"
+                    className="bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500 transition-colors"
                   >
                     <option value="">Select issue type...</option>
                     {reportTypes.map((type) => (
@@ -463,7 +463,7 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
                   <select
                     value={selectedPriority}
                     onChange={(e) => setSelectedPriority(e.target.value as "low" | "medium" | "high")}
-                    className="bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 transition-colors"
+                    className="bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500 transition-colors"
                   >
                     <option value="low">🟢 Low Priority</option>
                     <option value="medium">🟡 Medium Priority</option>
@@ -472,13 +472,13 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
                 </div>
                 
                 {selectedReportType === "📋 Other" && (
-                  <div className="mt-3">
+                  <div className="mt-2">
                     <input
                       type="text"
                       value={customIssueType}
                       onChange={(e) => setCustomIssueType(e.target.value)}
                       placeholder="Please specify the issue type..."
-                      className="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 transition-colors"
+                      className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500 transition-colors"
                       maxLength={50}
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -488,8 +488,8 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
                 )}
                 
                 {/* Image Upload */}
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
                     <input
                       type="file"
                       multiple
@@ -501,22 +501,22 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
                     />
                     <label
                       htmlFor="image-upload"
-                      className="flex items-center space-x-2 bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-700/50 transition-colors"
+                      className="flex items-center space-x-2 bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 cursor-pointer hover:bg-gray-700/50 transition-colors text-xs"
                     >
-                      <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2z" />
                       </svg>
-                      <span className="text-sm">Add photos (max 4)</span>
+                      <span>Add photos (max 4)</span>
                     </label>
                     {selectedImages.length > 0 && (
-                      <span className="text-sm text-blue-400">{selectedImages.length} file(s) selected</span>
+                      <span className="text-xs text-blue-400">{selectedImages.length} file(s) selected</span>
                     )}
                   </div>
                   
                   {/* Image Preview */}
                   {selectedImages.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-800">
+                    <div className="space-y-2">
+                      <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
                         <img
                           src={URL.createObjectURL(selectedImages[currentImageIndex])}
                           alt={`Preview ${currentImageIndex + 1}`}
@@ -527,46 +527,46 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
                           <>
                             <button
                               onClick={() => navigateImage('prev')}
-                              className="absolute left-3 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200"
+                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1 transition-all duration-200"
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                               </svg>
                             </button>
                             <button
                               onClick={() => navigateImage('next')}
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200"
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1 transition-all duration-200"
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                               </svg>
                             </button>
                           </>
                         )}
                         
-                        <div className="absolute top-3 right-3 bg-black/50 text-white text-sm px-3 py-1 rounded-full">
+                        <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
                           {currentImageIndex + 1} / {selectedImages.length}
                         </div>
                         
                         <button
                           onClick={() => removeImage(currentImageIndex)}
-                          className="absolute top-3 left-3 bg-red-600 hover:bg-red-700 text-white rounded-full p-2 text-xs transition-all duration-200"
+                          className="absolute top-2 left-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 text-xs transition-all duration-200"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
                       </div>
                       
                       {selectedImages.length > 1 && (
-                        <div className="flex space-x-2 overflow-x-auto pb-2">
+                        <div className="flex space-x-1 overflow-x-auto pb-1">
                           {selectedImages.map((image, index) => (
                             <button
                               key={index}
                               onClick={() => setCurrentImageIndex(index)}
-                              className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                              className={`relative flex-shrink-0 w-12 h-12 rounded-md overflow-hidden border transition-all duration-200 ${
                                 index === currentImageIndex 
-                                  ? 'border-blue-500 ring-2 ring-blue-500/30' 
+                                  ? 'border-blue-500 ring-1 ring-blue-500/30' 
                                   : 'border-gray-600 hover:border-gray-400'
                               }`}
                             >
@@ -588,8 +588,8 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
               </div>
 
               {/* Character Count and Submit */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 space-y-3 sm:space-y-0">
-                <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 space-y-2 sm:space-y-0">
+                <div className="flex items-center space-x-2 text-xs text-gray-500">
                   <span className={`${
                     postContent.length > 450 ? "text-red-400" : 
                     postContent.length > 400 ? "text-yellow-400" : ""
@@ -601,11 +601,11 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
                 <button
                   onClick={handleSubmitReport}
                   disabled={!postContent.trim() || !location || isSubmitting}
-                  className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 rounded-2xl px-6 lg:px-8 py-3 font-bold text-sm shadow-lg hover:shadow-xl"
+                  className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 rounded-xl px-4 lg:px-6 py-2 font-bold text-xs lg:text-sm shadow-lg hover:shadow-xl"
                 >
                   {isSubmitting ? (
                     <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       <span>Posting...</span>
                     </div>
                   ) : (

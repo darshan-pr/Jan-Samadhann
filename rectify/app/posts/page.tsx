@@ -16,7 +16,7 @@ export default function PostsPage() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const posts = useQuery(api.posts.getAllPosts);
-  const likePost = useMutation(api.posts.likePost);
+  const toggleLike = useMutation(api.posts.toggleLike);
   const repostPost = useMutation(api.posts.repostPost);
   const bookmarkPost = useMutation(api.posts.bookmarkPost);
 
@@ -465,7 +465,7 @@ export default function PostsPage() {
                           </button>
                           
                           <button 
-                            onClick={() => likePost({ postId: post._id, userId: user._id as Id<"users"> })}
+                            onClick={() => toggleLike({ postId: post._id, userId: user._id as Id<"users"> })}
                             className="flex items-center space-x-1 lg:space-x-2 hover:text-red-400 transition-colors p-2 lg:p-3 rounded-xl hover:bg-red-900/10"
                           >
                             <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

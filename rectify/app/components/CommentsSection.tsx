@@ -7,9 +7,10 @@ import { Id } from "@/convex/_generated/dataModel";
 
 interface CommentsSectionProps {
   postId: string;
+  currentUserId?: string;
 }
 
-export const CommentsSection = ({ postId }: CommentsSectionProps) => {
+export const CommentsSection = ({ postId, currentUserId }: CommentsSectionProps) => {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   
@@ -152,7 +153,7 @@ export const CommentsSection = ({ postId }: CommentsSectionProps) => {
                   </button>
                   
                   {/* Edit button - only show for user's own comments */}
-                  {comment.author?.type === "user" && (
+                  {comment.author?.type === "user" && currentUserId && comment.userId === currentUserId && (
                     <button
                       onClick={() => handleEditComment(comment._id, comment.text)}
                       className="flex items-center space-x-1 hover:text-blue-400 transition-colors text-xs"

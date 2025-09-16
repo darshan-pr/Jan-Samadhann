@@ -39,6 +39,7 @@ interface Post {
     fileSize: number;
     mimeType: string;
     uploadedAt: string;
+    url?: string | null;
   }>;
 }
 
@@ -170,7 +171,7 @@ export const PostCard = ({ post, user }: PostCardProps) => {
           <ImageCarousel photos={post.photos?.map(photo => ({
             _id: photo.fileId,
             fileName: photo.fileName,
-            url: null
+            url: photo.url
           })) || []} />
           
           <div className="flex items-center justify-between text-gray-400 max-w-full">
@@ -265,7 +266,7 @@ export const PostCard = ({ post, user }: PostCardProps) => {
               </div>
               
               {/* Comments List */}
-              <CommentsSection postId={post._id} />
+              <CommentsSection postId={post._id} currentUserId={user._id} />
             </div>
           )}
         </div>

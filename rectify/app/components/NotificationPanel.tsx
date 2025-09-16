@@ -5,8 +5,17 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 
+interface User {
+  _id: Id<"users">;
+  name: string;
+  phone: string;
+  city: string;
+  role: "user";
+  createdAt: string;
+}
+
 interface NotificationPanelProps {
-  user: any;
+  user: User;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -41,7 +50,14 @@ export const NotificationPanel = ({ user, isOpen, onClose }: NotificationPanelPr
     return date.toLocaleDateString();
   };
 
-  const getNotificationMessage = (notification: any) => {
+  const getNotificationMessage = (notification: {
+    _id: Id<"notifications">;
+    type: "status_update" | "admin_comment" | "like" | "reply" | "mention" | "repost";
+    message: string;
+    isRead: boolean;
+    createdAt: string;
+    fromAdmin?: { email: string } | null;
+  }) => {
     switch (notification.type) {
       case 'status_update':
         return {
@@ -67,7 +83,10 @@ export const NotificationPanel = ({ user, isOpen, onClose }: NotificationPanelPr
     }
   };
 
-  const getStatusDetails = (notification: any) => {
+  const getStatusDetails = (notification: {
+    type: "status_update" | "admin_comment" | "like" | "reply" | "mention" | "repost";
+    message: string;
+  }) => {
     if (notification.type !== 'status_update') return null;
     
     const statusMap = {
@@ -178,10 +197,16 @@ export const NotificationPanel = ({ user, isOpen, onClose }: NotificationPanelPr
 
             {/* Timeline */}
             <div className="ml-4 border-l-2 border-gray-700 pl-4 space-y-4">
-              {group.notifications.map((notification: any, index: number) => {
+              {group.notifications.map((notification: {
+                _id: Id<"notifications">;
+                type: "status_update" | "admin_comment" | "like" | "reply" | "mention" | "repost";
+                message: string;
+                isRead: boolean;
+                createdAt: string;
+                fromAdmin?: { email: string } | null;
+              }, index: number) => {
                 const { title, color } = getNotificationMessage(notification);
                 const statusDetails = getStatusDetails(notification);
-                const isLast = index === group.notifications.length - 1;
 
                 return (
                   <div

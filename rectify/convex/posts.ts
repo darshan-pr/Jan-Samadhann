@@ -105,7 +105,7 @@ export const getPostsByUser = query({
   },
 });
 
-export const likePost = mutation({
+export const toggleLike = mutation({
   args: { 
     postId: v.id("posts"),
     userId: v.id("users")
@@ -114,19 +114,24 @@ export const likePost = mutation({
     const post = await ctx.db.get(args.postId);
     if (!post) throw new Error("Post not found");
 
-    // Check if user already voted
-    const existingVote = await ctx.db
+    // Check if user already liked this post
+    const existingLike = await ctx.db
       .query("userVotes")
       .withIndex("by_user_post_type", (q) => 
         q.eq("userId", args.userId).eq("postId", args.postId).eq("type", "like")
       )
       .first();
 
-    if (existingVote) {
-      // User already voted, do nothing (prevent duplicate votes)
-      return { success: false, message: "Already voted" };
+    if (existingLike) {
+      // User already liked, remove the like
+      await ctx.db.delete(existingLike._id);
+      await ctx.db.patch(args.postId, {
+        likes: Math.max(0, post.likes - 1),
+        updatedAt: new Date().toISOString(),
+      });
+      return { success: true, message: "Like removed", isLiked: false };
     } else {
-      // Add vote
+      // User hasn't liked, add like
       await ctx.db.insert("userVotes", {
         userId: args.userId,
         postId: args.postId,
@@ -137,47 +142,29 @@ export const likePost = mutation({
         likes: post.likes + 1,
         updatedAt: new Date().toISOString(),
       });
-      return { success: true, message: "Vote added" };
+      return { success: true, message: "Like added", isLiked: true };
     }
   },
 });
 
-export const dislikePost = mutation({
+export const getUserLikeStatus = query({
   args: { 
     postId: v.id("posts"),
     userId: v.id("users")
   },
   handler: async (ctx, args) => {
-    const post = await ctx.db.get(args.postId);
-    if (!post) throw new Error("Post not found");
-
-    // Check if user already disliked
-    const existingDislike = await ctx.db
+    const existingLike = await ctx.db
       .query("userVotes")
       .withIndex("by_user_post_type", (q) => 
-        q.eq("userId", args.userId).eq("postId", args.postId).eq("type", "dislike")
+        q.eq("userId", args.userId).eq("postId", args.postId).eq("type", "like")
       )
       .first();
-
-    if (existingDislike) {
-      // User already disliked, do nothing (prevent duplicate dislikes)
-      return { success: false, message: "Already disliked" };
-    } else {
-      // Add dislike
-      await ctx.db.insert("userVotes", {
-        userId: args.userId,
-        postId: args.postId,
-        type: "dislike",
-        createdAt: new Date().toISOString(),
-      });
-      await ctx.db.patch(args.postId, {
-        dislikes: (post.dislikes || 0) + 1,
-        updatedAt: new Date().toISOString(),
-      });
-      return { success: true, message: "Dislike added" };
-    }
+    
+    return !!existingLike;
   },
 });
+
+// Removed dislikePost mutation - now using toggleLike only
 
 export const repostPost = mutation({
   args: { 
@@ -309,6 +296,258 @@ export const getUserVote = query({
       .first();
     
     return !!vote;
+  },
+});
+
+export const getTrendingIssues = query({
+  args: { 
+    city: v.optional(v.string()),
+    limit: v.optional(v.number())
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 10;
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    
+    // Get all posts from the last 7 days
+    let posts = await ctx.db
+      .query("posts")
+      .withIndex("by_created_at")
+      .filter((q) => q.gte(q.field("createdAt"), sevenDaysAgo))
+      .collect();
+    
+    // Filter by city if provided
+    if (args.city) {
+      posts = posts.filter(post => post.city === args.city);
+    }
+
+    // Calculate trending score for each issue type
+    const issueStats = new Map<string, {
+      issueType: string;
+      count: number;
+      totalLikes: number;
+      totalComments: number;
+      trendingScore: number;
+      priority: { high: number; medium: number; low: number };
+      recentActivity: number; // posts in last 24 hours
+    }>();
+
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    for (const post of posts) {
+      const issueType = post.issueType;
+      
+      if (!issueStats.has(issueType)) {
+        issueStats.set(issueType, {
+          issueType,
+          count: 0,
+          totalLikes: 0,
+          totalComments: 0,
+          trendingScore: 0,
+          priority: { high: 0, medium: 0, low: 0 },
+          recentActivity: 0
+        });
+      }
+
+      const stats = issueStats.get(issueType)!;
+      stats.count++;
+      stats.totalLikes += post.likes;
+      stats.priority[post.priority]++;
+      
+      // Count recent activity (last 24 hours)
+      if (post.createdAt >= oneDayAgo) {
+        stats.recentActivity++;
+      }
+
+      // Get comment count for this post
+      const commentCount = await ctx.db
+        .query("comments")
+        .withIndex("by_post", (q) => q.eq("postId", post._id))
+        .collect()
+        .then(comments => comments.length);
+      
+      stats.totalComments += commentCount;
+    }
+
+    // Calculate trending scores and convert to array
+    const trendingIssues = Array.from(issueStats.values()).map(stats => {
+      // Trending score algorithm:
+      // Base score = count * 10
+      // Like bonus = totalLikes * 5
+      // Comment bonus = totalComments * 3
+      // Recent activity bonus = recentActivity * 20
+      // Priority bonus = (high * 15) + (medium * 10) + (low * 5)
+      
+      const baseScore = stats.count * 10;
+      const likeBonus = stats.totalLikes * 5;
+      const commentBonus = stats.totalComments * 3;
+      const recentBonus = stats.recentActivity * 20;
+      const priorityBonus = (stats.priority.high * 15) + (stats.priority.medium * 10) + (stats.priority.low * 5);
+      
+      stats.trendingScore = baseScore + likeBonus + commentBonus + recentBonus + priorityBonus;
+      
+      return stats;
+    });
+
+    // Sort by trending score and return top issues
+    return trendingIssues
+      .sort((a, b) => b.trendingScore - a.trendingScore)
+      .slice(0, limit);
+  },
+});
+
+export const getCityTrendingIssues = query({
+  args: { city: v.string() },
+  handler: async (ctx, args) => {
+    const limit = 5;
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    
+    // Get all posts from the last 7 days for this city
+    const posts = await ctx.db
+      .query("posts")
+      .withIndex("by_created_at")
+      .filter((q) => q.gte(q.field("createdAt"), sevenDaysAgo))
+      .collect()
+      .then(posts => posts.filter(post => post.city === args.city));
+
+    // Calculate trending score for each issue type
+    const issueStats = new Map<string, {
+      issueType: string;
+      count: number;
+      totalLikes: number;
+      totalComments: number;
+      trendingScore: number;
+      priority: { high: number; medium: number; low: number };
+      recentActivity: number;
+    }>();
+
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    for (const post of posts) {
+      const issueType = post.issueType;
+      
+      if (!issueStats.has(issueType)) {
+        issueStats.set(issueType, {
+          issueType,
+          count: 0,
+          totalLikes: 0,
+          totalComments: 0,
+          trendingScore: 0,
+          priority: { high: 0, medium: 0, low: 0 },
+          recentActivity: 0
+        });
+      }
+
+      const stats = issueStats.get(issueType)!;
+      stats.count++;
+      stats.totalLikes += post.likes;
+      stats.priority[post.priority]++;
+      
+      if (post.createdAt >= oneDayAgo) {
+        stats.recentActivity++;
+      }
+
+      const commentCount = await ctx.db
+        .query("comments")
+        .withIndex("by_post", (q) => q.eq("postId", post._id))
+        .collect()
+        .then(comments => comments.length);
+      
+      stats.totalComments += commentCount;
+    }
+
+    // Calculate trending scores and return
+    const trendingIssues = Array.from(issueStats.values()).map(stats => {
+      const baseScore = stats.count * 10;
+      const likeBonus = stats.totalLikes * 5;
+      const commentBonus = stats.totalComments * 3;
+      const recentBonus = stats.recentActivity * 20;
+      const priorityBonus = (stats.priority.high * 15) + (stats.priority.medium * 10) + (stats.priority.low * 5);
+      
+      stats.trendingScore = baseScore + likeBonus + commentBonus + recentBonus + priorityBonus;
+      
+      return stats;
+    });
+
+    return trendingIssues
+      .sort((a, b) => b.trendingScore - a.trendingScore)
+      .slice(0, limit);
+  },
+});
+
+export const getGlobalTrendingIssues = query({
+  handler: async (ctx) => {
+    const limit = 10;
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    
+    // Get all posts from the last 7 days
+    const posts = await ctx.db
+      .query("posts")
+      .withIndex("by_created_at")
+      .filter((q) => q.gte(q.field("createdAt"), sevenDaysAgo))
+      .collect();
+
+    // Calculate trending score for each issue type
+    const issueStats = new Map<string, {
+      issueType: string;
+      count: number;
+      totalLikes: number;
+      totalComments: number;
+      trendingScore: number;
+      priority: { high: number; medium: number; low: number };
+      recentActivity: number;
+    }>();
+
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    for (const post of posts) {
+      const issueType = post.issueType;
+      
+      if (!issueStats.has(issueType)) {
+        issueStats.set(issueType, {
+          issueType,
+          count: 0,
+          totalLikes: 0,
+          totalComments: 0,
+          trendingScore: 0,
+          priority: { high: 0, medium: 0, low: 0 },
+          recentActivity: 0
+        });
+      }
+
+      const stats = issueStats.get(issueType)!;
+      stats.count++;
+      stats.totalLikes += post.likes;
+      stats.priority[post.priority]++;
+      
+      if (post.createdAt >= oneDayAgo) {
+        stats.recentActivity++;
+      }
+
+      const commentCount = await ctx.db
+        .query("comments")
+        .withIndex("by_post", (q) => q.eq("postId", post._id))
+        .collect()
+        .then(comments => comments.length);
+      
+      stats.totalComments += commentCount;
+    }
+
+    // Calculate trending scores and return
+    const trendingIssues = Array.from(issueStats.values()).map(stats => {
+      const baseScore = stats.count * 10;
+      const likeBonus = stats.totalLikes * 5;
+      const commentBonus = stats.totalComments * 3;
+      const recentBonus = stats.recentActivity * 20;
+      const priorityBonus = (stats.priority.high * 15) + (stats.priority.medium * 10) + (stats.priority.low * 5);
+      
+      stats.trendingScore = baseScore + likeBonus + commentBonus + recentBonus + priorityBonus;
+      
+      return stats;
+    });
+
+    return trendingIssues
+      .sort((a, b) => b.trendingScore - a.trendingScore)
+      .slice(0, limit);
   },
 });
 

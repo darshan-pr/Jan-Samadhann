@@ -11,18 +11,7 @@ export const addComment = mutation({
     const post = await ctx.db.get(args.postId);
     if (!post) throw new Error("Post not found");
 
-    // Check if user already commented on this post
-    const existingComment = await ctx.db
-      .query("comments")
-      .withIndex("by_user_post", (q) => 
-        q.eq("userId", args.userId).eq("postId", args.postId)
-      )
-      .first();
-
-    if (existingComment) {
-      throw new Error("You have already commented on this post");
-    }
-
+    // Allow multiple comments from the same user
     return await ctx.db.insert("comments", {
       postId: args.postId,
       userId: args.userId,

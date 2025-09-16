@@ -6,10 +6,10 @@ import { useAuth } from '../lib/auth';
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import ThemeToggle from "../components/ThemeToggle";
-import { PostComposer } from "../components/PostComposer";
 import { PostCard } from "../components/PostCard";
 import { NotificationPanel } from "@/app/components/NotificationPanel";
+import { PostModal } from "@/app/components/PostModal";
+import { FloatingPostButton } from "@/app/components/FloatingPostButton";
 
 interface Report {
   id: string;
@@ -31,11 +31,15 @@ export default function Dashboard() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showPostModal, setShowPostModal] = useState(false);
   
   // Convex queries
   const posts = useQuery(api.posts.getAllPosts);
   const unreadCount = useQuery(api.notifications.getUnreadNotificationCount, 
     user ? { userId: user._id as Id<"users"> } : "skip"
+  );
+  const trendingIssues = useQuery(api.posts.getCityTrendingIssues,
+    user && user.role === 'user' ? { city: user.city } : "skip"
   );
 
   // Redirect if not authenticated
@@ -95,65 +99,78 @@ export default function Dashboard() {
           Rectify
         </div>
         <div className="flex items-center space-x-3">
-          <ThemeToggle />
+          <button
+            onClick={() => setShowNotifications(true)}
+            className="relative p-2 rounded-xl hover:bg-gray-800 transition-all duration-200"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h16a1 1 0 001-1v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a1 1 0 001 1z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v4m0 0l-2-2m2 2l2-2" />
+            </svg>
+            {unreadCount && unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse">
+                {unreadCount}
+              </span>
+            )}
+          </button>
           <div className="relative">
             <button
-            onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
-          >
-            <span className="text-sm font-bold">{user.name.charAt(0).toUpperCase()}</span>
-          </button>
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              <span className="text-sm font-bold">{user.name.charAt(0).toUpperCase()}</span>
+            </button>
           
-          {/* Improved Profile Dropdown */}
-          {showProfileMenu && (
-            <div className="absolute right-0 top-12 bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 min-w-80 z-50 border border-gray-700">
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-xl font-bold">{user.name.charAt(0).toUpperCase()}</span>
+            {/* Profile Dropdown */}
+            {showProfileMenu && (
+              <div className="absolute right-0 top-12 bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 min-w-80 z-50 border border-gray-700">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <span className="text-xl font-bold">{user.name.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg">{user.name}</h3>
+                    <p className="text-gray-400 text-sm">@{user.phone.slice(-4)}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-lg">{user.name}</h3>
-                  <p className="text-gray-400 text-sm">@{user.phone.slice(-4)}</p>
+                
+                <div className="border-t border-gray-700 pt-4 space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Location</span>
+                    <span className="text-white">{user.city}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Phone</span>
+                    <span className="text-white">{user.phone}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Posts</span>
+                    <span className="text-blue-400">{posts?.filter(p => p.userId === user._id).length || 0}</span>
+                  </div>
                 </div>
+                
+                <button 
+                  onClick={handleLogout}
+                  className="w-full mt-6 bg-red-600 hover:bg-red-700 transition-colors rounded-xl py-3 px-4 font-medium flex items-center justify-center space-x-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  <span>Sign out</span>
+                </button>
               </div>
-              
-              <div className="border-t border-gray-700 pt-4 space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Location</span>
-                  <span className="text-white">{user.city}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Phone</span>
-                  <span className="text-white">{user.phone}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Posts</span>
-                  <span className="text-blue-400">{posts?.filter(p => p.userId === user._id).length || 0}</span>
-                </div>
-              </div>
-              
-              <button 
-                onClick={handleLogout}
-                className="w-full mt-6 bg-red-600 hover:bg-red-700 transition-colors rounded-xl py-3 px-4 font-medium flex items-center justify-center space-x-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                <span>Sign out</span>
-              </button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="flex max-w-7xl mx-auto">
         {/* Left Sidebar */}
-        <div className={`${showMobileMenu ? 'fixed inset-0 z-50 bg-black/95 backdrop-blur-md' : 'hidden'} lg:block lg:relative lg:w-64 xl:w-72 p-4 lg:border-r border-gray-800 lg:min-h-screen`}>
+        <div className={`${showMobileMenu ? 'fixed inset-0 z-50 bg-black' : 'hidden'} lg:block lg:relative lg:w-64 xl:w-72 p-4 lg:border-r border-gray-800 lg:min-h-screen`}>
           {showMobileMenu && (
             <button 
               onClick={() => setShowMobileMenu(false)}
-              className="lg:hidden absolute top-4 right-4 p-3 rounded-full hover:bg-gray-800 transition-colors z-10"
+              className="lg:hidden absolute top-4 right-4 p-2 rounded-full hover:bg-gray-800 transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -161,43 +178,43 @@ export default function Dashboard() {
             </button>
           )}
           
-          <div className="space-y-4 mt-12 lg:mt-0">
-            <div className="text-2xl lg:text-3xl font-bold mb-6 lg:mb-8 px-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+          <div className="space-y-2">
+            <div className="text-3xl font-bold mb-8 px-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               Rectify
             </div>
             
-            <nav className="space-y-3 lg:space-y-2">
+            <nav className="space-y-2">
               <a 
                 href="#" 
                 onClick={() => setShowMobileMenu(false)}
-                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl bg-blue-600/20 border border-blue-500/30 text-blue-400 transition-all duration-200"
+                className="flex items-center space-x-4 px-4 py-4 rounded-2xl bg-blue-600/20 border border-blue-500/30 text-blue-400 transition-all duration-200"
               >
-                <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                 </svg>
-                <span className="text-lg lg:text-xl font-medium">Home</span>
+                <span className="text-xl font-medium">Home</span>
               </a>
               
               <a 
                 href="/explore" 
                 onClick={() => setShowMobileMenu(false)}
-                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200"
+                className="flex items-center space-x-4 px-4 py-4 rounded-2xl hover:bg-gray-800/50 transition-all duration-200"
               >
-                <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <span className="text-lg lg:text-xl font-medium">Explore</span>
+                <span className="text-xl font-medium">Explore</span>
               </a>
               
               <a 
                 href="/posts" 
                 onClick={() => setShowMobileMenu(false)}
-                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200"
+                className="flex items-center space-x-4 px-4 py-4 rounded-2xl hover:bg-gray-800/50 transition-all duration-200"
               >
-                <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 011-1h1m-1 1v1m0-1h1m-1 1v1h1v-1z" />
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2-2z" />
                 </svg>
-                <span className="text-lg lg:text-xl font-medium">My Posts</span>
+                <span className="text-xl font-medium">My Posts</span>
               </a>
               
               <a 
@@ -207,13 +224,12 @@ export default function Dashboard() {
                   setShowNotifications(true);
                   setShowMobileMenu(false);
                 }}
-                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200 relative"
+                className="flex items-center space-x-4 px-4 py-4 rounded-2xl hover:bg-gray-800/50 transition-all duration-200 relative"
               >
-                <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h16a1 1 0 001-1v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a1 1 0 001 1z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v4m0 0l-2-2m2 2l2-2" />
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM5 17h5v5H5v-5zM5 3h5v5H5V3zM15 3h5v5h-5V3z" />
                 </svg>
-                <span className="text-lg lg:text-xl font-medium">Notifications</span>
+                <span className="text-xl font-medium">Notifications</span>
                 {unreadCount && unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse">
                     {unreadCount}
@@ -238,7 +254,18 @@ export default function Dashboard() {
               
               {/* Desktop Profile Button */}
               <div className="flex items-center space-x-4">
-                <ThemeToggle />
+                {/* Desktop Create Post Button */}
+                <button
+                  onClick={() => setShowPostModal(true)}
+                  className="hidden lg:flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 rounded-2xl px-6 py-3 text-sm font-medium shadow-lg hover:shadow-xl"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Create Post</span>
+                </button>
+                
+                
                 
                 {/* Desktop Notification Button */}
                 <button
@@ -257,58 +284,58 @@ export default function Dashboard() {
                 </button>
                 
                 <div className="relative">
-                <button
-                  onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
-                >
-                  <span className="text-lg font-bold">{user.name.charAt(0).toUpperCase()}</span>
-                </button>
-                
-                {showProfileMenu && (
-                  <div className="absolute right-0 top-14 bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 min-w-80 z-50 border border-gray-700">
-                    <div className="flex items-center space-x-4 mb-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                        <span className="text-xl font-bold">{user.name.charAt(0).toUpperCase()}</span>
+                  <button
+                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                    className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <span className="text-lg font-bold">{user.name.charAt(0).toUpperCase()}</span>
+                  </button>
+                  
+                  {showProfileMenu && (
+                    <div className="absolute right-0 top-14 bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 min-w-80 z-50 border border-gray-700">
+                      <div className="flex items-center space-x-4 mb-4">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                          <span className="text-xl font-bold">{user.name.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg">{user.name}</h3>
+                          <p className="text-gray-400 text-sm">@{user.phone.slice(-4)}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-bold text-lg">{user.name}</h3>
-                        <p className="text-gray-400 text-sm">@{user.phone.slice(-4)}</p>
+                      
+                      <div className="border-t border-gray-700 pt-4 space-y-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Location</span>
+                          <span className="text-white">{user.city}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Phone</span>
+                          <span className="text-white">{user.phone}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Posts</span>
+                          <span className="text-blue-400">{posts?.filter(p => p.userId === user._id).length || 0}</span>
+                        </div>
                       </div>
+                      
+                      <button 
+                        onClick={handleLogout}
+                        className="w-full mt-6 bg-red-600 hover:bg-red-700 transition-colors rounded-xl py-3 px-4 font-medium flex items-center justify-center space-x-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span>Sign out</span>
+                      </button>
                     </div>
-                    
-                    <div className="border-t border-gray-700 pt-4 space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Location</span>
-                        <span className="text-white">{user.city}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Phone</span>
-                        <span className="text-white">{user.phone}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Posts</span>
-                        <span className="text-blue-400">{posts?.filter(p => p.userId === user._id).length || 0}</span>
-                      </div>
-                    </div>
-                    
-                    <button 
-                      onClick={handleLogout}
-                      className="w-full mt-6 bg-red-600 hover:bg-red-700 transition-colors rounded-xl py-3 px-4 font-medium flex items-center justify-center space-x-2"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                      <span>Sign out</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Post Composer Component */}
-          <PostComposer user={user} />
+          {/* Removed inline PostComposer - now using modal */}
 
           {/* Feed */}
           <div className="divide-y divide-gray-800">
@@ -324,7 +351,11 @@ export default function Dashboard() {
               </div>
             ) : (
               posts.map((post) => (
-                <PostCard key={post._id} post={post} user={user} />
+                <PostCard 
+                  key={post._id} 
+                  post={post} 
+                  user={user && user.role === 'user' ? { ...user, _id: user._id as Id<"users">, createdAt: '' } : { _id: '' as Id<"users">, name: '', phone: '', city: '', role: 'user' as const, createdAt: '' }} 
+                />
               ))
             )}
           </div>
@@ -382,32 +413,62 @@ export default function Dashboard() {
                 Trending Issues
               </h2>
               <div className="space-y-4">
-                <div className="hover:bg-gray-800/50 p-4 rounded-2xl transition-all duration-200 cursor-pointer border border-transparent hover:border-gray-600/50">
-                  <div className="text-gray-500 text-xs mb-1">Trending in {user.city}</div>
-                  <div className="font-bold text-lg text-blue-400">#PotholeRepair</div>
-                  <div className="text-gray-500 text-xs">1,234 reports</div>
-                  <div className="w-full bg-gray-800 rounded-full h-2 mt-2">
-                    <div className="bg-blue-500 h-2 rounded-full w-3/4"></div>
+                {!trendingIssues || trendingIssues.filter(issue => issue.count > 0).length === 0 ? (
+                  <div className="text-center text-gray-500 py-6">
+                    <svg className="w-12 h-12 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <p className="text-sm">No trending issues yet</p>
+                    <p className="text-xs text-gray-600">Report more issues to see trends</p>
                   </div>
-                </div>
-                
-                <div className="hover:bg-gray-800/50 p-4 rounded-2xl transition-all duration-200 cursor-pointer border border-transparent hover:border-gray-600/50">
-                  <div className="text-gray-500 text-xs mb-1">Trending in {user.city}</div>
-                  <div className="font-bold text-lg text-yellow-400">#StreetLights</div>
-                  <div className="text-gray-500 text-xs">892 reports</div>
-                  <div className="w-full bg-gray-800 rounded-full h-2 mt-2">
-                    <div className="bg-yellow-500 h-2 rounded-full w-1/2"></div>
-                  </div>
-                </div>
-                
-                <div className="hover:bg-gray-800/50 p-4 rounded-2xl transition-all duration-200 cursor-pointer border border-transparent hover:border-gray-600/50">
-                  <div className="text-gray-500 text-xs mb-1">Trending in {user.city}</div>
-                  <div className="font-bold text-lg text-green-400">#WaterSupply</div>
-                  <div className="text-gray-500 text-xs">567 reports</div>
-                  <div className="w-full bg-gray-800 rounded-full h-2 mt-2">
-                    <div className="bg-green-500 h-2 rounded-full w-1/3"></div>
-                  </div>
-                </div>
+                ) : (
+                  trendingIssues
+                    .filter(issue => issue.count > 0) // Hide categories with zero count
+                    .map((issue, index) => {
+                      const trendingColors = ['text-red-400', 'text-orange-400', 'text-yellow-400', 'text-blue-400', 'text-green-400'];
+                      const progressColors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500'];
+                      const colorIndex = index % trendingColors.length;
+                      
+                      // Calculate progress percentage based on relative trending score
+                      const maxScore = trendingIssues.filter(i => i.count > 0)[0]?.trendingScore || 1;
+                      const progressPercent = Math.round((issue.trendingScore / maxScore) * 100);
+                      
+                      return (
+                        <div key={issue.issueType} className="hover:bg-gray-800/50 p-4 rounded-2xl transition-all duration-200 cursor-pointer border border-transparent hover:border-gray-600/50">
+                          <div className="text-gray-500 text-xs mb-1">
+                            Trending in {user && user.role === 'user' ? user.city : 'Your Area'}
+                          </div>
+                          <div className={`font-bold text-lg ${trendingColors[colorIndex]} flex items-center justify-between`}>
+                            <span>#{issue.issueType.replace(/[^a-zA-Z]/g, '')}</span>
+                            <span className="text-sm font-normal bg-gray-800/50 px-2 py-1 rounded-full">
+                              {issue.count} posts
+                            </span>
+                          </div>
+                          <div className="text-gray-500 text-xs mb-2 flex flex-wrap gap-2">
+                            <span>{issue.totalLikes} likes</span>
+                            <span>•</span>
+                            <span>{issue.totalComments} comments</span>
+                            {issue.recentActivity > 0 && (
+                              <>
+                                <span>•</span>
+                                <span className="text-green-400">{issue.recentActivity} recent</span>
+                              </>
+                            )}
+                          </div>
+                          <div className="w-full bg-gray-800 rounded-full h-2">
+                            <div 
+                              className={`${progressColors[colorIndex]} h-2 rounded-full transition-all duration-500`}
+                              style={{ width: `${progressPercent}%` }}
+                            ></div>
+                          </div>
+                          <div className="text-xs text-gray-600 mt-1 flex justify-between">
+                            <span>Score: {Math.round(issue.trendingScore)}</span>
+                            <span>#{index + 1}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
               </div>
               
               <button className="text-blue-400 hover:text-blue-300 transition-colors mt-4 text-sm font-medium flex items-center">
@@ -421,10 +482,22 @@ export default function Dashboard() {
         </div>
       </div>
       
+      {/* Floating Post Button */}
+      <FloatingPostButton onClick={() => setShowPostModal(true)} />
+      
+      {/* Post Modal */}
+      {showPostModal && user && user.role === 'user' && (
+        <PostModal 
+          user={{ ...user, _id: user._id as Id<"users">, createdAt: '' }}
+          isOpen={showPostModal}
+          onClose={() => setShowPostModal(false)}
+        />
+      )}
+      
       {/* Notification Panel */}
-      {showNotifications && user && (
+      {showNotifications && user && user.role === 'user' && (
         <NotificationPanel 
-          user={user}
+          user={{ ...user, _id: user._id as Id<"users">, createdAt: '' }}
           isOpen={showNotifications}
           onClose={() => setShowNotifications(false)}
         />

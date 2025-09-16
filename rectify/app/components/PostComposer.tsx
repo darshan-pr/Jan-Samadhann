@@ -5,8 +5,17 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 
+interface User {
+  _id: Id<"users">;
+  name: string;
+  phone: string;
+  city: string;
+  role: "user";
+  createdAt: string;
+}
+
 interface PostComposerProps {
-  user: any;
+  user: User;
 }
 
 export const PostComposer = ({ user }: PostComposerProps) => {

@@ -7,9 +7,53 @@ import { Id } from "@/convex/_generated/dataModel";
 import ImageCarousel from "./ImageCarousel";
 import { CommentsSection } from "./CommentsSection";
 
+interface Post {
+  _id: Id<"posts">;
+  userId: Id<"users">;
+  description: string;
+  issueType: string;
+  customIssueType?: string;
+  city: string;
+  address: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+  status: "submitted" | "in_progress" | "resolved" | "rejected";
+  priority: "low" | "medium" | "high";
+  createdAt: string;
+  updatedAt: string;
+  likes: number;
+  dislikes?: number;
+  reposts: number;
+  bookmarks: number;
+  likedBy?: Id<"users">[];
+  votedBy?: Id<"users">[];
+  user?: {
+    name: string;
+    phone: string;
+  } | null;
+  photos?: Array<{
+    fileId: Id<"_storage">;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    uploadedAt: string;
+  }>;
+}
+
+interface User {
+  _id: Id<"users">;
+  name: string;
+  phone: string;
+  city: string;
+  role: "user";
+  createdAt: string;
+}
+
 interface PostCardProps {
-  post: any;
-  user: any;
+  post: Post;
+  user: User;
 }
 
 export const PostCard = ({ post, user }: PostCardProps) => {
@@ -17,15 +61,14 @@ export const PostCard = ({ post, user }: PostCardProps) => {
   const [commentText, setCommentText] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   
-  // Check if user has already commented
-  const userComment = useQuery(api.comments.getUserComment, { 
-    postId: post._id as Id<"posts">, 
-    userId: user._id as Id<"users"> 
+  // Check if user has liked this post
+  const isLiked = useQuery(api.posts.getUserLikeStatus, {
+    postId: post._id as Id<"posts">,
+    userId: user._id as Id<"users">
   });
   
   // Convex mutations
-  const likePost = useMutation(api.posts.likePost);
-  const dislikePost = useMutation(api.posts.dislikePost);
+  const toggleLike = useMutation(api.posts.toggleLike);
   const repostPost = useMutation(api.posts.repostPost);
   const bookmarkPost = useMutation(api.posts.bookmarkPost);
   const addComment = useMutation(api.comments.addComment);
@@ -54,14 +97,9 @@ export const PostCard = ({ post, user }: PostCardProps) => {
       });
       
       setCommentText("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding comment:", error);
-      // Show user-friendly error message
-      if (error.message.includes("already commented")) {
-        alert("You have already commented on this post. Only one comment per user is allowed.");
-      } else {
-        alert("Failed to add comment. Please try again.");
-      }
+      alert("Failed to add comment. Please try again.");
     } finally {
       setIsSubmittingComment(false);
     }
@@ -71,12 +109,12 @@ export const PostCard = ({ post, user }: PostCardProps) => {
     setShowComments(!showComments);
   };
 
-  const handleLike = () => {
-    likePost({ postId: post._id, userId: user._id as Id<"users"> });
-  };
-
-  const handleDislike = () => {
-    dislikePost({ postId: post._id, userId: user._id as Id<"users"> });
+  const handleToggleLike = async () => {
+    try {
+      await toggleLike({ postId: post._id, userId: user._id as Id<"users"> });
+    } catch (error) {
+      console.error("Error toggling like:", error);
+    }
   };
 
   const handleRepost = () => {
@@ -129,7 +167,11 @@ export const PostCard = ({ post, user }: PostCardProps) => {
             <p className="text-white text-sm lg:text-lg leading-relaxed">{post.description}</p>
           </div>
           
-          <ImageCarousel photos={post.photos} />
+          <ImageCarousel photos={post.photos?.map(photo => ({
+            _id: photo.fileId,
+            fileName: photo.fileName,
+            url: null
+          })) || []} />
           
           <div className="flex items-center justify-between text-gray-400 max-w-full">
             <button 
@@ -154,26 +196,22 @@ export const PostCard = ({ post, user }: PostCardProps) => {
               <span className="text-xs lg:text-sm">{post.reposts}</span>
             </button>
             
-            {/* Thumbs Up (Like) Button */}
+            {/* Like Button (LinkedIn-style toggle) */}
             <button 
-              onClick={handleLike}
-              className="flex items-center space-x-1 lg:space-x-2 hover:text-green-400 transition-colors p-2 lg:p-3 rounded-full hover:bg-green-900/10"
+              onClick={handleToggleLike}
+              className={`flex items-center space-x-1 lg:space-x-2 transition-colors p-2 lg:p-3 rounded-full ${
+                isLiked 
+                  ? 'text-blue-500 bg-blue-900/20 hover:bg-blue-900/30' 
+                  : 'text-gray-400 hover:text-blue-400 hover:bg-blue-900/10'
+              }`}
             >
-              <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M7.493 18.75c-.425 0-.82-.236-.975-.632A7.48 7.48 0 016 15.375c0-1.75.599-3.358 1.602-4.634.151-.192.373-.309.6-.397.473-.183.89-.514 1.212-.924a9.042 9.042 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75 2.25 2.25 0 012.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558-.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H14.23c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23h-.777zM2.331 10.977a11.969 11.969 0 00-.831 4.398 12 12 0 00.52 3.507c.26.85 1.084 1.368 1.973 1.368H4.9c.445 0 .72-.498.523-.898a8.963 8.963 0 01-.924-3.977c0-1.708.476-3.305 1.302-4.666.245-.403-.028-.959-.5-.959H4.25c-.832 0-1.612.453-1.918 1.227z"/>
+              <svg className="w-4 h-4 lg:w-5 lg:h-5" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2v0a2 2 0 00-2 2v6.5C10 11.776 10.224 12 10.5 12H14zm-7 10v-5C7 6.477 6.523 6 6 6v0c-.523 0-1 .477-1 1v5c0 .523.477 1 1 1h1z" />
               </svg>
               <span className="text-xs lg:text-sm">{post.likes || 0}</span>
-            </button>
-
-            {/* Thumbs Down (Dislike) Button */}
-            <button 
-              onClick={handleDislike}
-              className="flex items-center space-x-1 lg:space-x-2 hover:text-red-400 transition-colors p-2 lg:p-3 rounded-full hover:bg-red-900/10"
-            >
-              <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M15.73 5.25h1.035A7.465 7.465 0 0118 9.375a7.465 7.465 0 01-1.235 4.125h-.148c-.806 0-1.534.446-2.031 1.08a9.04 9.04 0 01-2.861 2.4c-.723.384-1.35.956-1.653 1.715a4.498 4.498 0 00-.322 1.672V21a.75.75 0 01-.75.75 2.25 2.25 0 01-2.25-2.25c0-1.152.26-2.243.723-3.218C7.74 15.724 7.366 15 6.748 15H3.622c-1.026 0-1.945-.694-2.054-1.715A12.134 12.134 0 011.5 12c0-2.848.992-5.464 2.649-7.521C4.537 3.997 5.136 3.75 5.754 3.75H9.77a4.5 4.5 0 011.423.23l3.114 1.04a4.5 4.5 0 001.423.23zM21.669 14.023c.536-1.362.831-2.845.831-4.398 0-1.22-.182-2.398-.52-3.507-.26-.85-1.084-1.368-1.973-1.368H19.1c-.445 0-.72.498-.523.898.591 1.2.924 2.55.924 3.977a8.958 8.958 0 01-1.302 4.666c-.245.403.028.959.5.959h1.053c.832 0 1.612-.453 1.918-1.227z"/>
-              </svg>
-              <span className="text-xs lg:text-sm">{post.dislikes || 0}</span>
+              {isLiked && (
+                <span className="text-xs text-blue-400 hidden lg:inline">Liked</span>
+              )}
             </button>
             
             <button 
@@ -195,46 +233,36 @@ export const PostCard = ({ post, user }: PostCardProps) => {
           {/* Comment Section */}
           {showComments && (
             <div className="mt-4 border-t border-gray-800 pt-4">
-              {/* Comment Input */}
-              {userComment ? (
-                <div className="mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
-                  <p className="text-sm text-gray-400 mb-2">You have already commented on this post:</p>
-                  <p className="text-white text-sm">{userComment.text}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Posted {formatTime(userComment.createdAt)}
-                  </p>
+              {/* Comment Input - Always visible since multiple comments are allowed */}
+              <div className="flex space-x-3 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-bold">{user.name.charAt(0).toUpperCase()}</span>
                 </div>
-              ) : (
-                <div className="flex space-x-3 mb-4">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-bold">{user.name.charAt(0).toUpperCase()}</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex space-x-2">
-                      <input
-                        type="text"
-                        placeholder="Write a comment..."
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSubmitComment();
-                          }
-                        }}
-                        className="flex-1 bg-gray-800 border border-gray-700 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                      />
-                      <button
-                        onClick={handleSubmitComment}
-                        disabled={!commentText.trim() || isSubmittingComment}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-full px-4 py-2 text-sm font-medium transition-colors"
-                      >
-                        {isSubmittingComment ? "..." : "Post"}
-                      </button>
-                    </div>
+                <div className="flex-1">
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      placeholder="Write a comment..."
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSubmitComment();
+                        }
+                      }}
+                      className="flex-1 bg-gray-800 border border-gray-700 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                    <button
+                      onClick={handleSubmitComment}
+                      disabled={!commentText.trim() || isSubmittingComment}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-full px-4 py-2 text-sm font-medium transition-colors"
+                    >
+                      {isSubmittingComment ? "..." : "Post"}
+                    </button>
                   </div>
                 </div>
-              )}
+              </div>
               
               {/* Comments List */}
               <CommentsSection postId={post._id} />

@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+/* Dark Theme (Default) */
+:root[data-theme="dark"] {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --background-secondary: #111111;
+  --background-tertiary: #1a1a1a;
+  --border-color: #2a2a2a;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --accent-primary: #3b82f6;
+  --accent-secondary: #8b5cf6;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --card-bg: rgba(0, 0, 0, 0.8);
+  --input-bg: rgba(17, 17, 17, 0.8);
+  --hover-bg: rgba(55, 65, 81, 0.3);
+}
+
+/* Light Theme */
+:root[data-theme="light"] {
+  --background: #ffffff;
+  --foreground: #171717;
+  --background-secondary: #f8fafc;
+  --background-tertiary: #f1f5f9;
+  --border-color: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --accent-primary: #3b82f6;
+  --accent-secondary: #8b5cf6;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --input-bg: rgba(248, 250, 252, 0.9);
+  --hover-bg: rgba(241, 245, 249, 0.8);
+}
+
+/* Default to dark theme */
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --background-secondary: #111111;
+  --background-tertiary: #1a1a1a;
+  --border-color: #2a2a2a;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --accent-primary: #3b82f6;
+  --accent-secondary: #8b5cf6;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --card-bg: rgba(0, 0, 0, 0.8);
+  --input-bg: rgba(17, 17, 17, 0.8);
+  --hover-bg: rgba(55, 65, 81, 0.3);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Theme-aware utility classes */
+.bg-theme {
+  background: var(--background);
+}
+
+.bg-theme-secondary {
+  background: var(--background-secondary);
+}
+
+.bg-theme-tertiary {
+  background: var(--background-tertiary);
+}
+
+.text-theme-primary {
+  color: var(--text-primary);
+}
+
+.text-theme-secondary {
+  color: var(--text-secondary);
+}
+
+.text-theme-muted {
+  color: var(--text-muted);
+}
+
+.border-theme {
+  border-color: var(--border-color);
+}
+
+.bg-theme-card {
+  background: var(--card-bg);
+}
+
+.bg-theme-input {
+  background: var(--input-bg);
+}
+
+.hover-theme:hover {
+  background: var(--hover-bg);
+}

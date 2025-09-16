@@ -45,13 +45,13 @@ export default function ImageCarousel({ photos }: ImageCarouselProps) {
   // Single image display
   if (photos.length === 1) {
     return (
-      <div className="mb-4 rounded-xl lg:rounded-2xl overflow-hidden">
-        <div className="relative aspect-square max-w-md mx-auto">
+      <div className="mb-4 rounded-2xl lg:rounded-3xl overflow-hidden border border-gray-700/50 shadow-2xl mobile-image-container">
+        <div className="relative aspect-[4/3] max-w-lg mx-auto bg-gradient-to-br from-gray-800/50 to-gray-900/50">
           {photos[0].url ? (
             <img
               src={photos[0].url}
               alt={photos[0].fileName}
-              className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+              className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-all duration-300 ease-out touch-manipulation"
               onClick={openModal}
             />
           ) : (
@@ -70,14 +70,14 @@ export default function ImageCarousel({ photos }: ImageCarouselProps) {
   // Multiple images carousel
   return (
     <>
-      <div className="mb-4 rounded-xl lg:rounded-2xl overflow-hidden">
-        <div className="relative aspect-square max-w-md mx-auto bg-black">
+      <div className="mb-4 rounded-2xl lg:rounded-3xl overflow-hidden border border-gray-700/50 shadow-2xl mobile-image-container">
+        <div className="relative aspect-[4/3] max-w-lg mx-auto bg-gradient-to-br from-gray-800/50 to-gray-900/50">
           {/* Main Image */}
           {photos[currentIndex]?.url ? (
             <img
               src={photos[currentIndex].url}
               alt={photos[currentIndex].fileName}
-              className="w-full h-full object-cover cursor-pointer"
+              className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-all duration-300 ease-out touch-manipulation"
               onClick={openModal}
             />
           ) : (
@@ -90,18 +90,24 @@ export default function ImageCarousel({ photos }: ImageCarouselProps) {
           {photos.length > 1 && (
             <>
               <button
-                onClick={goToPrevious}
-                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200 backdrop-blur-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToPrevious();
+                }}
+                className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 bg-black/60 hover:bg-black/80 active:bg-black/90 text-white rounded-full p-2 sm:p-3 transition-all duration-200 backdrop-blur-sm border border-gray-500/30 shadow-xl mobile-touch-target"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
               <button
-                onClick={goToNext}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200 backdrop-blur-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToNext();
+                }}
+                className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 bg-black/60 hover:bg-black/80 active:bg-black/90 text-white rounded-full p-2 sm:p-3 transition-all duration-200 backdrop-blur-sm border border-gray-500/30 shadow-xl mobile-touch-target"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -135,15 +141,15 @@ export default function ImageCarousel({ photos }: ImageCarouselProps) {
 
         {/* Thumbnail Strip for larger screens */}
         {photos.length > 1 && (
-          <div className="hidden lg:flex mt-2 space-x-2 overflow-x-auto pb-2">
+          <div className="hidden lg:flex mt-3 space-x-3 overflow-x-auto pb-2 px-2">
             {photos.map((photo, index) => (
               <button
                 key={photo._id}
                 onClick={() => goToSlide(index)}
-                className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                className={`flex-shrink-0 w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all duration-300 hover:scale-110 shadow-lg ${
                   index === currentIndex 
-                    ? 'border-blue-500 opacity-100' 
-                    : 'border-gray-600 opacity-60 hover:opacity-80'
+                    ? 'border-blue-500 opacity-100 ring-2 ring-blue-500/30' 
+                    : 'border-gray-600 opacity-60 hover:opacity-80 hover:border-gray-500'
                 }`}
               >
                 {photo.url ? (
@@ -171,30 +177,102 @@ export default function ImageCarousel({ photos }: ImageCarouselProps) {
   );
 }
 
-// Full-screen image modal component
+// Enhanced full-screen image modal component
 function ImageModal({ photo, onClose }: { photo: Photo; onClose: () => void }) {
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  const handleImageClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isZoomed) {
+      setIsZoomed(true);
+      setScale(2);
+    } else {
+      setIsZoomed(false);
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isZoomed) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width - 0.5) * -100;
+      const y = ((e.clientY - rect.top) / rect.height - 0.5) * -100;
+      setPosition({ x, y });
+    }
+  };
+
   return (
     <div 
-      className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-2 sm:p-4"
       onClick={onClose}
     >
-      <div className="relative max-w-4xl max-h-full">
+      <div className="relative w-full h-full max-w-7xl flex items-center justify-center">
+        
+        {/* Close Button - Top Right */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 z-10 transition-all duration-200"
+          className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 text-white rounded-full p-3 z-20 transition-all duration-200 backdrop-blur-sm border border-gray-600/50 shadow-xl"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
-        {photo.url && (
-          <img
-            src={photo.url}
-            alt={photo.fileName}
-            className="max-w-full max-h-full object-contain rounded-lg"
-            onClick={(e) => e.stopPropagation()}
-          />
-        )}
+
+        {/* Image Info - Top Left */}
+        <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm text-white px-4 py-2 rounded-2xl text-sm z-20 border border-gray-600/50 shadow-xl">
+          <p className="font-medium">{photo.fileName}</p>
+        </div>
+
+        {/* Zoom Instructions - Bottom Center */}
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm text-white px-4 py-2 rounded-2xl text-sm z-20 border border-gray-600/50 shadow-xl">
+          <p className="flex items-center space-x-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+            </svg>
+            <span>{isZoomed ? 'Click to zoom out' : 'Click to zoom in'}</span>
+          </p>
+        </div>
+
+        {/* Main Image Container */}
+        <div 
+          className="relative w-full h-full flex items-center justify-center cursor-pointer overflow-hidden rounded-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {photo.url ? (
+            <img
+              src={photo.url}
+              alt={photo.fileName}
+              className={`max-w-full max-h-full object-contain transition-all duration-300 ease-out rounded-2xl shadow-2xl ${
+                isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'
+              }`}
+              style={{
+                transform: `scale(${scale}) translate(${position.x}px, ${position.y}px)`,
+                transformOrigin: 'center'
+              }}
+              onClick={handleImageClick}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={() => isZoomed && setPosition({ x: 0, y: 0 })}
+            />
+          ) : (
+            <div className="w-full h-full bg-gray-800 rounded-2xl flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-gray-600 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-400">Loading image...</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Gesture Indicators */}
+        <div className="lg:hidden absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm text-white px-4 py-2 rounded-2xl text-xs z-20 border border-gray-600/50">
+          <p className="flex items-center space-x-2">
+            <span>👆</span>
+            <span>Tap image to zoom • Tap outside to close</span>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ export default defineSchema({
     phone: v.string(),
     city: v.string(),
     role: v.literal("user"),
+    points: v.optional(v.number()),
     createdAt: v.string(),
   }).index("by_phone", ["phone"]),
 
@@ -154,4 +155,54 @@ export default defineSchema({
     hashtagId: v.id("hashtags"),
   }).index("by_post", ["postId"])
     .index("by_hashtag", ["hashtagId"]),
+
+  pointsTransactions: defineTable({
+    userId: v.id("users"),
+    points: v.number(),
+    type: v.union(
+      v.literal("earned"),
+      v.literal("spent")
+    ),
+    reason: v.string(),
+    postId: v.optional(v.id("posts")),
+    badgeId: v.optional(v.id("badges")),
+    createdAt: v.string(),
+  }).index("by_user", ["userId"])
+    .index("by_type", ["type"])
+    .index("by_user_created", ["userId", "createdAt"]),
+
+  badges: defineTable({
+    name: v.string(),
+    description: v.string(),
+    icon: v.string(),
+    color: v.string(),
+    cost: v.number(),
+    rarity: v.union(
+      v.literal("common"),
+      v.literal("rare"), 
+      v.literal("epic"),
+      v.literal("legendary")
+    ),
+    category: v.union(
+      v.literal("contribution"),
+      v.literal("achievement"),
+      v.literal("premium"),
+      v.literal("special")
+    ),
+    isActive: v.boolean(),
+    createdAt: v.string(),
+  }).index("by_rarity", ["rarity"])
+    .index("by_category", ["category"])
+    .index("by_cost", ["cost"])
+    .index("by_active", ["isActive"]),
+
+  userBadges: defineTable({
+    userId: v.id("users"),
+    badgeId: v.id("badges"),
+    isEquipped: v.boolean(),
+    earnedAt: v.string(),
+  }).index("by_user", ["userId"])
+    .index("by_badge", ["badgeId"])
+    .index("by_user_equipped", ["userId", "isEquipped"])
+    .index("by_user_badge", ["userId", "badgeId"]),
 });

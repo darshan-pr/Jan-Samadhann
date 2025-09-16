@@ -114,19 +114,40 @@ export const likePost = mutation({
     const post = await ctx.db.get(args.postId);
     if (!post) throw new Error("Post not found");
 
-    // Check if user already voted
-    const existingVote = await ctx.db
+    // Check if user already liked
+    const existingLike = await ctx.db
       .query("userVotes")
       .withIndex("by_user_post_type", (q) => 
         q.eq("userId", args.userId).eq("postId", args.postId).eq("type", "like")
       )
       .first();
 
-    if (existingVote) {
-      // User already voted, do nothing (prevent duplicate votes)
-      return { success: false, message: "Already voted" };
+    // Check if user already disliked
+    const existingDislike = await ctx.db
+      .query("userVotes")
+      .withIndex("by_user_post_type", (q) => 
+        q.eq("userId", args.userId).eq("postId", args.postId).eq("type", "dislike")
+      )
+      .first();
+
+    if (existingLike) {
+      // User already liked, remove like (unlike)
+      await ctx.db.delete(existingLike._id);
+      await ctx.db.patch(args.postId, {
+        likes: Math.max(0, post.likes - 1),
+        updatedAt: new Date().toISOString(),
+      });
+      return { success: true, message: "Like removed" };
     } else {
-      // Add vote
+      // Remove dislike if exists, then add like
+      if (existingDislike) {
+        await ctx.db.delete(existingDislike._id);
+        await ctx.db.patch(args.postId, {
+          dislikes: Math.max(0, (post.dislikes || 0) - 1),
+        });
+      }
+      
+      // Add like
       await ctx.db.insert("userVotes", {
         userId: args.userId,
         postId: args.postId,
@@ -137,7 +158,7 @@ export const likePost = mutation({
         likes: post.likes + 1,
         updatedAt: new Date().toISOString(),
       });
-      return { success: true, message: "Vote added" };
+      return { success: true, message: "Like added" };
     }
   },
 });
@@ -159,10 +180,31 @@ export const dislikePost = mutation({
       )
       .first();
 
+    // Check if user already liked
+    const existingLike = await ctx.db
+      .query("userVotes")
+      .withIndex("by_user_post_type", (q) => 
+        q.eq("userId", args.userId).eq("postId", args.postId).eq("type", "like")
+      )
+      .first();
+
     if (existingDislike) {
-      // User already disliked, do nothing (prevent duplicate dislikes)
-      return { success: false, message: "Already disliked" };
+      // User already disliked, remove dislike
+      await ctx.db.delete(existingDislike._id);
+      await ctx.db.patch(args.postId, {
+        dislikes: Math.max(0, (post.dislikes || 0) - 1),
+        updatedAt: new Date().toISOString(),
+      });
+      return { success: true, message: "Dislike removed" };
     } else {
+      // Remove like if exists, then add dislike
+      if (existingLike) {
+        await ctx.db.delete(existingLike._id);
+        await ctx.db.patch(args.postId, {
+          likes: Math.max(0, post.likes - 1),
+        });
+      }
+      
       // Add dislike
       await ctx.db.insert("userVotes", {
         userId: args.userId,
@@ -258,13 +300,44 @@ export const bookmarkPost = mutation({
   },
 });
 
+export const getUserVoteStatus = query({
+  args: { 
+    postId: v.id("posts"),
+    userId: v.id("users")
+  },
+  handler: async (ctx, args) => {
+    const votes = await ctx.db
+      .query("userVotes")
+      .withIndex("by_user_post", (q) => 
+        q.eq("userId", args.userId).eq("postId", args.postId)
+      )
+      .collect();
+
+    const voteStatus = {
+      hasLiked: false,
+      hasDisliked: false,
+      hasReposted: false,
+      hasBookmarked: false
+    };
+
+    votes.forEach(vote => {
+      if (vote.type === "like") voteStatus.hasLiked = true;
+      if (vote.type === "dislike") voteStatus.hasDisliked = true;
+      if (vote.type === "repost") voteStatus.hasReposted = true;
+      if (vote.type === "bookmark") voteStatus.hasBookmarked = true;
+    });
+
+    return voteStatus;
+  },
+});
+
 export const getPostsWithHighVotes = query({
   handler: async (ctx) => {
     const posts = await ctx.db
       .query("posts")
       .withIndex("by_likes")
       .order("desc")
-      .filter((q) => q.gte(q.field("likes"), 10))
+      .filter((q) => q.gte(q.field("likes"), 2))
       .collect();
 
     const postsWithUserInfo = await Promise.all(
@@ -327,18 +400,46 @@ export const updatePostStatus = mutation({
     const post = await ctx.db.get(args.postId);
     if (!post) throw new Error("Post not found");
 
+    const oldStatus = post.status;
+
     // Update post status
     await ctx.db.patch(args.postId, {
       status: args.status,
       updatedAt: new Date().toISOString(),
     });
 
+    // Award points when post gets resolved (approved)
+    if (args.status === "resolved" && oldStatus !== "resolved") {
+      const user = await ctx.db.get(post.userId);
+      if (user) {
+        const pointsToAward = 50; // Base points for resolved post
+        const priorityBonus = post.priority === "high" ? 25 : post.priority === "medium" ? 15 : 10;
+        const totalPoints = pointsToAward + priorityBonus;
+
+        const currentPoints = user.points || 0;
+        const newPoints = currentPoints + totalPoints;
+
+        // Update user's total points
+        await ctx.db.patch(post.userId, { points: newPoints });
+
+        // Create points transaction record
+        await ctx.db.insert("pointsTransactions", {
+          userId: post.userId,
+          points: totalPoints,
+          type: "earned",
+          reason: `Post resolved: ${post.issueType} (${post.priority} priority)`,
+          postId: args.postId,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+
     // Create notification if admin is provided and status actually changed
-    if (args.adminId && post.status !== args.status) {
+    if (args.adminId && oldStatus !== args.status) {
       const statusMessages = {
         submitted: "Your post has been submitted for review",
         in_progress: "Your post is now being addressed by our team",
-        resolved: "Great news! Your reported issue has been resolved",
+        resolved: "Great news! Your reported issue has been resolved and you've earned Rectify Points!",
         rejected: "Your post has been reviewed but cannot be processed at this time"
       };
 

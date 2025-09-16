@@ -7,18 +7,37 @@ import { useAuth } from '../lib/auth';
 import { useRouter } from 'next/navigation';
 import { Id } from "@/convex/_generated/dataModel";
 import ImageCarousel from '../components/ImageCarousel';
+import { NotificationPanel } from "@/app/components/NotificationPanel";
+import { BadgeShop } from "@/app/components/BadgeShop";
+import { PostCreationModal } from "@/app/components/PostCreationModal";
 
 
 export default function ExplorePage() {
-  const { user, isLoading } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showBadgeShop, setShowBadgeShop] = useState(false);
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false);
 
   const posts = useQuery(api.posts.getAllPosts);
   const likePost = useMutation(api.posts.likePost);
   const repostPost = useMutation(api.posts.repostPost);
   const bookmarkPost = useMutation(api.posts.bookmarkPost);
+  
+  // Additional queries for navigation features
+  const unreadCount = useQuery(api.notifications.getUnreadNotificationCount, 
+    user ? { userId: user._id as Id<"users"> } : "skip"
+  );
+  const userPoints = useQuery(api.points.getUserPoints,
+    user ? { userId: user._id as Id<"users"> } : "skip"
+  );
+  const equippedBadge = useQuery(api.badges.getEquippedBadge,
+    user ? { userId: user._id as Id<"users"> } : "skip"
+  );
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -38,6 +57,11 @@ export default function ExplorePage() {
   if (!user || user.role !== 'user') {
     return null;
   }
+  
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -91,27 +115,301 @@ export default function ExplorePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 text-white font-sans">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-black/80 backdrop-blur-md border-b border-gray-800 z-10">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                  Explore
-                </h1>
-                <p className="text-gray-400 text-sm mt-1">Discover community issues from everywhere</p>
+      {/* Mobile Header */}
+      <div className="lg:hidden flex items-center justify-between p-3 sm:p-4 border-b border-gray-800 bg-black/80 backdrop-blur-md sticky top-0 z-50 safe-area-inset">
+        <button 
+          onClick={() => setShowMobileMenu(!showMobileMenu)}
+          className="p-2 rounded-xl hover:bg-gray-800 transition-all duration-200"
+        >
+          <div className="w-6 h-6 flex flex-col justify-center space-y-1">
+            <div className="h-0.5 bg-white w-full rounded-full"></div>
+            <div className="h-0.5 bg-white w-full rounded-full"></div>
+            <div className="h-0.5 bg-white w-full rounded-full"></div>
+          </div>
+        </button>
+        <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+          Rectify
+        </div>
+        <div className="flex items-center space-x-3">
+          <div className="relative">
+            <button
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
+          >
+            <span className="text-sm font-bold">{user.name.charAt(0).toUpperCase()}</span>
+          </button>
+          
+          {/* Mobile Profile Dropdown */}
+          {showProfileMenu && (
+            <div className="absolute right-0 top-12 bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 min-w-80 z-50 border border-gray-700">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
+                  <span className="text-xl font-bold">{user.name.charAt(0).toUpperCase()}</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">{user.name}</h3>
+                  <p className="text-gray-400 text-sm">@{user.phone.slice(-4)}</p>
+                </div>
               </div>
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 rounded-2xl px-6 py-3 font-bold text-sm shadow-lg hover:shadow-xl flex items-center space-x-2"
+              
+              <div className="border-t border-gray-700 pt-4 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Location</span>
+                  <span className="text-white">{user.city}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Phone</span>
+                  <span className="text-white">{user.phone}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Posts</span>
+                  <span className="text-blue-400">{posts?.filter(p => p.userId === user._id).length || 0}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Rectify Points</span>
+                  <span className="text-yellow-400 font-medium">⭐ {userPoints || 0}</span>
+                </div>
+                {equippedBadge?.badge ? (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Badge</span>
+                    <span className="flex items-center space-x-2">
+                      <span className="text-xl">{equippedBadge.badge.icon}</span>
+                      <div className="text-right">
+                        <div className="text-white font-medium">{equippedBadge.badge.name}</div>
+                        <div className="text-xs text-purple-400 capitalize">{equippedBadge.badge.rarity}</div>
+                      </div>
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Badge</span>
+                    <span className="text-gray-500">None equipped</span>
+                  </div>
+                )}
+              </div>
+              
+              <button 
+                onClick={handleLogout}
+                className="w-full mt-6 bg-red-600 hover:bg-red-700 transition-colors rounded-xl py-3 px-4 font-medium flex items-center justify-center space-x-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                <span>Report Issue</span>
+                <span>Sign out</span>
               </button>
             </div>
+          )}
+        </div>
+        </div>
+      </div>
+
+      <div className="flex max-w-7xl mx-auto safe-area-inset responsive-spacing lg:px-6">
+        {/* Left Sidebar */}
+        <div className={`${showMobileMenu ? 'fixed inset-0 z-50 bg-black/95 backdrop-blur-md' : 'hidden'} lg:block lg:relative lg:w-64 xl:w-72 lg:p-4 lg:border-r border-gray-800 lg:min-h-screen`}>
+          {showMobileMenu && (
+            <button 
+              onClick={() => setShowMobileMenu(false)}
+              className="lg:hidden absolute top-4 right-4 p-3 rounded-full hover:bg-gray-800 transition-colors z-10"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+          
+          <div className="space-y-4 mt-12 lg:mt-0 p-4 lg:p-0">
+            <div className="text-2xl lg:text-3xl font-bold mb-6 lg:mb-8 px-3 bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+              Rectify
+            </div>
+            
+            <nav className="space-y-3 lg:space-y-2">
+              <a 
+                href="/dashboard" 
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200 mobile-nav-item"
+              >
+                <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                </svg>
+                <span className="text-lg lg:text-xl font-medium">Home</span>
+              </a>
+              
+              <a 
+                href="#" 
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl bg-blue-600/20 border border-blue-500/30 text-blue-400 transition-all duration-200 mobile-nav-item"
+              >
+                <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-lg lg:text-xl font-medium">Explore</span>
+              </a>
+              
+              <a 
+                href="/posts" 
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200 mobile-nav-item"
+              >
+                <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 011-1h1m-1 1v1m0-1h1m-1 1v1h1v-1z" />
+                </svg>
+                <span className="text-lg lg:text-xl font-medium">My Posts</span>
+              </a>
+              
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowNotifications(true);
+                  setShowMobileMenu(false);
+                }}
+                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200 relative mobile-nav-item"
+              >
+                <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h16a1 1 0 001-1v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a1 1 0 001 1z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v4m0 0l-2-2m2 2l2-2" />
+                </svg>
+                <span className="text-lg lg:text-xl font-medium">Notifications</span>
+                {unreadCount && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse">
+                    {unreadCount}
+                  </span>
+                )}
+              </a>
+              
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowBadgeShop(true);
+                  setShowMobileMenu(false);
+                }}
+                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200 mobile-nav-item"
+              >
+                <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <span className="text-lg lg:text-xl font-medium">Badge Shop</span>
+              </a>
+            </nav>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 max-w-full lg:max-w-4xl lg:border-r border-gray-800 min-h-screen px-0 sm:px-1 lg:px-0 mobile-uniform-spacing">
+          {/* Create Post Button - Mobile Floating Action Button */}
+          <div className="lg:hidden">
+            <button
+              onClick={() => setShowCreatePostModal(true)}
+              className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40 mobile-touch-target"
+              style={{ bottom: 'max(24px, env(safe-area-inset-bottom))' }}
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+          {/* Header */}
+          <div className="hidden lg:block sticky top-0 bg-black/80 backdrop-blur-md border-b border-gray-800 z-10">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+                    Explore
+                  </h1>
+                  <p className="text-gray-400 text-sm mt-1">Discover community issues from everywhere</p>
+                </div>
+                
+                {/* Desktop Profile and Notification Section */}
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => setShowCreatePostModal(true)}
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 rounded-2xl px-6 py-3 font-bold text-sm shadow-lg hover:shadow-xl flex items-center space-x-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Report Issue</span>
+                  </button>
+                  
+                  {/* Desktop Notification Button */}
+                  <button
+                    onClick={() => setShowNotifications(true)}
+                    className="relative w-12 h-12 bg-gray-800/50 hover:bg-gray-700 rounded-full flex items-center justify-center transition-all duration-200 border border-gray-700 hover:border-gray-600"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h16a1 1 0 001-1v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a1 1 0 001 1z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v4m0 0l-2-2m2 2l2-2" />
+                    </svg>
+                    {unreadCount && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse min-w-[20px] text-center">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </button>
+                  
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowProfileMenu(!showProfileMenu)}
+                      className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
+                      <span className="text-lg font-bold">{user.name.charAt(0).toUpperCase()}</span>
+                    </button>
+                    
+                    {showProfileMenu && (
+                      <div className="absolute right-0 top-14 bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 min-w-80 z-50 border border-gray-700">
+                        <div className="flex items-center space-x-4 mb-4">
+                          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
+                            <span className="text-xl font-bold">{user.name.charAt(0).toUpperCase()}</span>
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-lg">{user.name}</h3>
+                            <p className="text-gray-400 text-sm">@{user.phone.slice(-4)}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="border-t border-gray-700 pt-4 space-y-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">Location</span>
+                            <span className="text-white">{user.city}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">Phone</span>
+                            <span className="text-white">{user.phone}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">Posts</span>
+                            <span className="text-blue-400">{posts?.filter(p => p.userId === user._id).length || 0}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">Rectify Points</span>
+                            <span className="text-yellow-400 font-medium">⭐ {userPoints || 0}</span>
+                          </div>
+                          {equippedBadge?.badge && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-400">Badge</span>
+                              <span className="flex items-center space-x-1">
+                                <span className="text-lg">{equippedBadge.badge.icon}</span>
+                                <span className="text-white">{equippedBadge.badge.name}</span>
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <button 
+                          onClick={handleLogout}
+                          className="w-full mt-6 bg-red-600 hover:bg-red-700 transition-colors rounded-xl py-3 px-4 font-medium flex items-center justify-center space-x-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                          <span>Sign out</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
 
             {/* Search Bar */}
             <div className="relative mb-6">
@@ -185,7 +483,7 @@ export default function ExplorePage() {
         <div className="px-6 pb-6">
           {sortedPosts.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-full flex items-center justify-center border border-gray-700/50">
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-full flex items-center justify-center border border-gray-700/50">
                 <svg className="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
@@ -202,7 +500,7 @@ export default function ExplorePage() {
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 rounded-2xl px-8 py-4 font-bold shadow-lg hover:shadow-xl"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 rounded-2xl px-8 py-4 font-bold shadow-lg hover:shadow-xl"
                 >
                   Clear Search
                 </button>
@@ -213,7 +511,7 @@ export default function ExplorePage() {
               {sortedPosts.map((post) => (
                 <div key={post._id} className="bg-gradient-to-br from-gray-900/50 to-gray-800/50 backdrop-blur-sm rounded-3xl p-6 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300 hover:shadow-2xl">
                   <div className="flex space-x-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center flex-shrink-0">
                       <span className="text-lg font-bold">{post.user?.name?.[0].toUpperCase() || "U"}</span>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -310,7 +608,35 @@ export default function ExplorePage() {
             </div>
           )}
         </div>
+        </div>
       </div>
+      
+      {/* Notification Panel */}
+      {showNotifications && user && (
+        <NotificationPanel 
+          user={user}
+          isOpen={showNotifications}
+          onClose={() => setShowNotifications(false)}
+        />
+      )}
+
+      {/* Badge Shop */}
+      {showBadgeShop && user && (
+        <BadgeShop 
+          user={user}
+          isOpen={showBadgeShop}
+          onClose={() => setShowBadgeShop(false)}
+        />
+      )}
+
+      {/* Create Post Modal */}
+      {showCreatePostModal && user && (
+        <PostCreationModal 
+          user={user}
+          isOpen={showCreatePostModal}
+          onClose={() => setShowCreatePostModal(false)}
+        />
+      )}
     </div>
   );
 }

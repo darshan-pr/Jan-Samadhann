@@ -6,10 +6,10 @@ import { useAuth } from '../lib/auth';
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import ThemeToggle from "../components/ThemeToggle";
-import { PostComposer } from "../components/PostComposer";
 import { PostCard } from "../components/PostCard";
 import { NotificationPanel } from "@/app/components/NotificationPanel";
+import { BadgeShop } from "@/app/components/BadgeShop";
+import { PostCreationModal } from "@/app/components/PostCreationModal";
 
 interface Report {
   id: string;
@@ -31,10 +31,19 @@ export default function Dashboard() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showBadgeShop, setShowBadgeShop] = useState(false);
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Convex queries
   const posts = useQuery(api.posts.getAllPosts);
   const unreadCount = useQuery(api.notifications.getUnreadNotificationCount, 
+    user ? { userId: user._id as Id<"users"> } : "skip"
+  );
+  const userPoints = useQuery(api.points.getUserPoints,
+    user ? { userId: user._id as Id<"users"> } : "skip"
+  );
+  const equippedBadge = useQuery(api.badges.getEquippedBadge,
     user ? { userId: user._id as Id<"users"> } : "skip"
   );
 
@@ -77,10 +86,32 @@ export default function Dashboard() {
     router.push('/login');
   };
 
+  const handlePostClick = (post: unknown) => {
+    // Navigate to detailed post view or expand inline
+    console.log('Post clicked:', post);
+  };
+
+  // Filter posts based on search query
+  const filteredPosts = posts?.filter(post => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      post.description?.toLowerCase().includes(query) ||
+      post.issueType?.toLowerCase().includes(query) ||
+      post.customIssueType?.toLowerCase().includes(query) ||
+      post.address?.toLowerCase().includes(query) ||
+      post.city?.toLowerCase().includes(query) ||
+      post.user?.name?.toLowerCase().includes(query) ||
+      post.status?.toLowerCase().includes(query) ||
+      post.priority?.toLowerCase().includes(query)
+    );
+  }) || [];
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 text-white font-sans">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 text-white font-sans mobile-app-container">
       {/* Mobile Header */}
-      <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-800 bg-black/80 backdrop-blur-md sticky top-0 z-50">
+      <div className="lg:hidden flex items-center justify-between p-3 sm:p-4 border-b border-gray-800 bg-black/80 backdrop-blur-md sticky top-0 z-50 safe-area-inset">
         <button 
           onClick={() => setShowMobileMenu(!showMobileMenu)}
           className="p-2 rounded-xl hover:bg-gray-800 transition-all duration-200"
@@ -91,15 +122,14 @@ export default function Dashboard() {
             <div className="h-0.5 bg-white w-full rounded-full"></div>
           </div>
         </button>
-        <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+        <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
           Rectify
         </div>
         <div className="flex items-center space-x-3">
-          <ThemeToggle />
           <div className="relative">
             <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
+            className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
           >
             <span className="text-sm font-bold">{user.name.charAt(0).toUpperCase()}</span>
           </button>
@@ -108,7 +138,7 @@ export default function Dashboard() {
           {showProfileMenu && (
             <div className="absolute right-0 top-12 bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 min-w-80 z-50 border border-gray-700">
               <div className="flex items-center space-x-4 mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
                   <span className="text-xl font-bold">{user.name.charAt(0).toUpperCase()}</span>
                 </div>
                 <div>
@@ -130,6 +160,27 @@ export default function Dashboard() {
                   <span className="text-gray-400">Posts</span>
                   <span className="text-blue-400">{posts?.filter(p => p.userId === user._id).length || 0}</span>
                 </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Rectify Points</span>
+                  <span className="text-yellow-400 font-medium">⭐ {userPoints || 0}</span>
+                </div>
+                {equippedBadge?.badge ? (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Badge</span>
+                    <span className="flex items-center space-x-2">
+                      <span className="text-xl">{equippedBadge.badge.icon}</span>
+                      <div className="text-right">
+                        <div className="text-white font-medium">{equippedBadge.badge.name}</div>
+                        <div className="text-xs text-purple-400 capitalize">{equippedBadge.badge.rarity}</div>
+                      </div>
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Badge</span>
+                    <span className="text-gray-500">None equipped</span>
+                  </div>
+                )}
               </div>
               
               <button 
@@ -147,9 +198,35 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="flex max-w-7xl mx-auto">
+      {/* Mobile Search Bar */}
+      <div className="lg:hidden px-3 sm:px-4 py-3 border-b border-gray-800 bg-black/60 backdrop-blur-md sticky top-16 z-40">
+        <div className="relative">
+          <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search posts, issues, locations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-gray-900/70 border border-gray-700 rounded-2xl py-3 pl-12 pr-4 outline-none focus:border-blue-500 focus:bg-gray-900 transition-all duration-200 text-white placeholder-gray-400 mobile-search-input"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex max-w-7xl mx-auto safe-area-inset responsive-spacing lg:px-6">
         {/* Left Sidebar */}
-        <div className={`${showMobileMenu ? 'fixed inset-0 z-50 bg-black/95 backdrop-blur-md' : 'hidden'} lg:block lg:relative lg:w-64 xl:w-72 p-4 lg:border-r border-gray-800 lg:min-h-screen`}>
+        <div className={`${showMobileMenu ? 'fixed inset-0 z-50 bg-black/95 backdrop-blur-md' : 'hidden'} lg:block lg:relative lg:w-64 xl:w-72 lg:p-4 lg:border-r border-gray-800 lg:min-h-screen`}>
           {showMobileMenu && (
             <button 
               onClick={() => setShowMobileMenu(false)}
@@ -161,8 +238,8 @@ export default function Dashboard() {
             </button>
           )}
           
-          <div className="space-y-4 mt-12 lg:mt-0">
-            <div className="text-2xl lg:text-3xl font-bold mb-6 lg:mb-8 px-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+          <div className="space-y-4 mt-12 lg:mt-0 p-4 lg:p-0">
+            <div className="text-2xl lg:text-3xl font-bold mb-6 lg:mb-8 px-3 bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
               Rectify
             </div>
             
@@ -170,7 +247,7 @@ export default function Dashboard() {
               <a 
                 href="#" 
                 onClick={() => setShowMobileMenu(false)}
-                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl bg-blue-600/20 border border-blue-500/30 text-blue-400 transition-all duration-200"
+                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl bg-blue-600/20 border border-blue-500/30 text-blue-400 transition-all duration-200 mobile-nav-item"
               >
                 <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
@@ -181,7 +258,7 @@ export default function Dashboard() {
               <a 
                 href="/explore" 
                 onClick={() => setShowMobileMenu(false)}
-                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200"
+                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200 mobile-nav-item"
               >
                 <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -192,7 +269,7 @@ export default function Dashboard() {
               <a 
                 href="/posts" 
                 onClick={() => setShowMobileMenu(false)}
-                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200"
+                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200 mobile-nav-item"
               >
                 <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 011-1h1m-1 1v1m0-1h1m-1 1v1h1v-1z" />
@@ -207,7 +284,7 @@ export default function Dashboard() {
                   setShowNotifications(true);
                   setShowMobileMenu(false);
                 }}
-                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200 relative"
+                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200 relative mobile-nav-item"
               >
                 <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h16a1 1 0 001-1v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a1 1 0 001 1z" />
@@ -215,22 +292,37 @@ export default function Dashboard() {
                 </svg>
                 <span className="text-lg lg:text-xl font-medium">Notifications</span>
                 {unreadCount && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse">
-                    {unreadCount}
+                  <span className="absolute -top-2 -right-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center border-2 border-gray-900 shadow-lg animate-pulse">
+                    {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
+              </a>
+              
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowBadgeShop(true);
+                  setShowMobileMenu(false);
+                }}
+                className="flex items-center space-x-3 lg:space-x-4 px-4 py-3 lg:py-4 rounded-xl lg:rounded-2xl hover:bg-gray-800/50 transition-all duration-200 mobile-nav-item"
+              >
+                <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <span className="text-lg lg:text-xl font-medium">Badge Shop</span>
               </a>
             </nav>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 max-w-full lg:max-w-2xl border-r border-gray-800 min-h-screen">
+        <div className="flex-1 max-w-full lg:max-w-2xl lg:border-r border-gray-800 min-h-screen px-0 sm:px-1 lg:px-0 mobile-uniform-spacing">
           {/* Simple Header - No tabs */}
           <div className="hidden lg:block sticky top-0 bg-black/80 backdrop-blur-md border-b border-gray-800 z-10 p-4 lg:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
                   Community Feed
                 </h1>
                 <p className="text-gray-400 text-sm mt-1">Share and discover community issues</p>
@@ -238,7 +330,6 @@ export default function Dashboard() {
               
               {/* Desktop Profile Button */}
               <div className="flex items-center space-x-4">
-                <ThemeToggle />
                 
                 {/* Desktop Notification Button */}
                 <button
@@ -250,8 +341,8 @@ export default function Dashboard() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v4m0 0l-2-2m2 2l2-2" />
                   </svg>
                   {unreadCount && unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse min-w-[20px] text-center">
-                      {unreadCount}
+                    <span className="absolute -top-2 -right-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center border-2 border-gray-900 shadow-lg animate-pulse">
+                      {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
                 </button>
@@ -259,7 +350,7 @@ export default function Dashboard() {
                 <div className="relative">
                 <button
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
+                  className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
                 >
                   <span className="text-lg font-bold">{user.name.charAt(0).toUpperCase()}</span>
                 </button>
@@ -267,7 +358,7 @@ export default function Dashboard() {
                 {showProfileMenu && (
                   <div className="absolute right-0 top-14 bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 min-w-80 z-50 border border-gray-700">
                     <div className="flex items-center space-x-4 mb-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
                         <span className="text-xl font-bold">{user.name.charAt(0).toUpperCase()}</span>
                       </div>
                       <div>
@@ -289,6 +380,19 @@ export default function Dashboard() {
                         <span className="text-gray-400">Posts</span>
                         <span className="text-blue-400">{posts?.filter(p => p.userId === user._id).length || 0}</span>
                       </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Rectify Points</span>
+                        <span className="text-yellow-400 font-medium">⭐ {userPoints || 0}</span>
+                      </div>
+                      {equippedBadge?.badge && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Badge</span>
+                          <span className="flex items-center space-x-1">
+                            <span className="text-lg">{equippedBadge.badge.icon}</span>
+                            <span className="text-white">{equippedBadge.badge.name}</span>
+                          </span>
+                        </div>
+                      )}
                     </div>
                     
                     <button 
@@ -307,31 +411,102 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Post Composer Component */}
-          <PostComposer user={user} />
+          {/* Create Post Button - Mobile Floating Action Button */}
+          <div className="lg:hidden">
+            <button
+              onClick={() => setShowCreatePostModal(true)}
+              className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40 mobile-touch-target mobile-fab"
+              style={{ bottom: 'max(24px, env(safe-area-inset-bottom))' }}
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Create Post Section - Desktop */}
+          <div className="hidden lg:block border-b border-gray-800 p-6">
+            <button
+              onClick={() => setShowCreatePostModal(true)}
+              className="w-full bg-gradient-to-r from-gray-800/50 to-gray-700/50 hover:from-gray-700/50 hover:to-gray-600/50 border border-gray-600 rounded-2xl p-6 text-left transition-all duration-200 group"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-lg font-bold">{user.name.charAt(0).toUpperCase()}</span>
+                </div>
+                <div className="flex-1">
+                  <div className="text-gray-400 group-hover:text-gray-300 transition-colors text-lg">
+                    What&apos;s happening in your community?
+                  </div>
+                  <div className="flex items-center space-x-4 mt-3">
+                    <div className="flex items-center space-x-2 text-blue-400">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2z" />
+                      </svg>
+                      <span className="text-sm">Photos</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-purple-400">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      </svg>
+                      <span className="text-sm">Location</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-green-400">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span className="text-sm">AI Assist</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {/* Search Results Info */}
+          {searchQuery && (
+            <div className="p-4 lg:p-6 border-b border-gray-800 bg-gray-900/30">
+              <div className="flex items-center justify-between">
+                <p className="text-gray-300">
+                  {filteredPosts.length} result{filteredPosts.length !== 1 ? 's' : ''} for &ldquo;<span className="text-blue-400 font-medium">{searchQuery}</span>&rdquo;
+                </p>
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="text-sm text-gray-400 hover:text-white transition-colors"
+                >
+                  Clear search
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Feed */}
-          <div className="divide-y divide-gray-800">
-            {!posts || posts.length === 0 ? (
+          <div className="divide-y divide-gray-800 mobile-scroll-safe mobile-list-spacing">
+            {!filteredPosts || filteredPosts.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
                   <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold mb-2">No posts yet</h3>
-                <p>Be the first to report a community issue!</p>
+                <h3 className="text-xl font-bold mb-2">{searchQuery ? 'No matching posts found' : 'No posts yet'}</h3>
+                <p>{searchQuery ? 'Try adjusting your search terms' : 'Be the first to report a community issue!'}</p>
               </div>
             ) : (
-              posts.map((post) => (
-                <PostCard key={post._id} post={post} user={user} />
+              filteredPosts.map((post) => (
+                <PostCard 
+                  key={post._id} 
+                  post={post} 
+                  user={user} 
+                  onPostClick={() => handlePostClick(post)}
+                />
               ))
             )}
           </div>
         </div>
 
         {/* Right Sidebar */}
-        <div className="hidden xl:block w-80 p-4 space-y-4">
+        <div className="hidden xl:block w-80 p-4 pr-6 space-y-4">
           <div className="sticky top-4 space-y-4">
             <div className="relative">
               <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -339,9 +514,21 @@ export default function Dashboard() {
               </svg>
               <input
                 type="text"
-                placeholder="Search Rectify"
-                className="w-full bg-gray-900/50 border border-gray-700 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-blue-500 transition-colors backdrop-blur-sm"
+                placeholder="Search posts, issues, locations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-gray-900/50 border border-gray-700 rounded-2xl py-4 pl-12 pr-12 outline-none focus:border-blue-500 transition-colors backdrop-blur-sm text-white placeholder-gray-400"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </div>
 
             {/* Enhanced User Info Card */}
@@ -353,7 +540,7 @@ export default function Dashboard() {
                 Your Profile
               </h2>
               <div className="flex items-center space-x-4 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
                   <span className="font-bold">{user.name.charAt(0).toUpperCase()}</span>
                 </div>
                 <div>
@@ -361,7 +548,7 @@ export default function Dashboard() {
                   <p className="text-gray-400 text-sm">{user.city}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="grid grid-cols-2 gap-4 text-center mb-4">
                 <div className="bg-gray-800/50 rounded-xl p-3">
                   <div className="text-2xl font-bold text-blue-400">{posts?.filter(p => p.userId === user._id).length || 0}</div>
                   <div className="text-xs text-gray-400">Posts</div>
@@ -371,6 +558,47 @@ export default function Dashboard() {
                   <div className="text-xs text-gray-400">Resolved</div>
                 </div>
               </div>
+              <div className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 rounded-xl p-4 text-center mb-4">
+                <div className="flex items-center justify-center space-x-3">
+                  <span className="text-3xl animate-pulse">⭐</span>
+                  <div>
+                    <div className="text-yellow-400 font-bold text-xl">{userPoints || 0}</div>
+                    <div className="text-xs text-gray-400">Rectify Points</div>
+                  </div>
+                </div>
+              </div>
+              {equippedBadge?.badge ? (
+                <div className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-xl p-4 text-center mb-4 relative overflow-hidden badge-animate">
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10"></div>
+                  <div className="relative flex items-center justify-center space-x-3">
+                    <span className="text-3xl drop-shadow-lg">{equippedBadge.badge.icon}</span>
+                    <div>
+                      <div className="text-purple-400 font-bold text-base">{equippedBadge.badge.name}</div>
+                      <div className="text-xs text-gray-400">Equipped Badge</div>
+                      <div className="text-xs text-purple-300 capitalize">{equippedBadge.badge.rarity}</div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gradient-to-r from-gray-500/20 to-gray-600/20 border border-gray-500/30 rounded-xl p-4 text-center mb-4">
+                  <div className="flex items-center justify-center space-x-3">
+                    <span className="text-3xl opacity-50">🏅</span>
+                    <div>
+                      <div className="text-gray-400 font-medium text-sm">No Badge Equipped</div>
+                      <div className="text-xs text-gray-500">Visit Badge Shop</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={() => setShowBadgeShop(true)}
+                className="w-full bg-gradient-to-r from-blue-600/20 to-blue-700/20 border border-blue-500/30 text-blue-400 rounded-xl py-3 px-4 font-medium transition-all duration-200 hover:bg-blue-600/30 flex items-center justify-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <span>Badge Shop</span>
+              </button>
             </div>
 
             {/* Enhanced Trending Issues */}
@@ -429,6 +657,25 @@ export default function Dashboard() {
           onClose={() => setShowNotifications(false)}
         />
       )}
+
+      {/* Badge Shop */}
+      {showBadgeShop && user && (
+        <BadgeShop 
+          user={user}
+          isOpen={showBadgeShop}
+          onClose={() => setShowBadgeShop(false)}
+        />
+      )}
+
+      {/* Create Post Modal */}
+      {showCreatePostModal && user && (
+        <PostCreationModal 
+          user={user}
+          isOpen={showCreatePostModal}
+          onClose={() => setShowCreatePostModal(false)}
+        />
+      )}
+
     </div>
   );
 }

@@ -11,18 +11,7 @@ export const addComment = mutation({
     const post = await ctx.db.get(args.postId);
     if (!post) throw new Error("Post not found");
 
-    // Check if user already commented on this post
-    const existingComment = await ctx.db
-      .query("comments")
-      .withIndex("by_user_post", (q) => 
-        q.eq("userId", args.userId).eq("postId", args.postId)
-      )
-      .first();
-
-    if (existingComment) {
-      throw new Error("You have already commented on this post");
-    }
-
+    // Allow multiple comments from the same user
     return await ctx.db.insert("comments", {
       postId: args.postId,
       userId: args.userId,
@@ -192,10 +181,25 @@ export const editComment = mutation({
   args: { 
     commentId: v.id("comments"),
     text: v.string(),
+    userId: v.optional(v.id("users")),
+    adminId: v.optional(v.id("admins")),
   },
   handler: async (ctx, args) => {
     const comment = await ctx.db.get(args.commentId);
     if (!comment) throw new Error("Comment not found");
+
+    // Check if the user/admin is authorized to edit this comment
+    if (args.userId && comment.userId) {
+      if (args.userId !== comment.userId) {
+        throw new Error("You can only edit your own comments");
+      }
+    } else if (args.adminId && comment.adminId) {
+      if (args.adminId !== comment.adminId) {
+        throw new Error("You can only edit your own comments");
+      }
+    } else {
+      throw new Error("Unauthorized to edit this comment");
+    }
 
     await ctx.db.patch(args.commentId, {
       text: args.text,

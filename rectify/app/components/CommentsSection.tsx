@@ -7,9 +7,10 @@ import { Id } from "@/convex/_generated/dataModel";
 
 interface CommentsSectionProps {
   postId: string;
+  currentUser?: { _id: string; role: string; } | null;
 }
 
-export const CommentsSection = ({ postId }: CommentsSectionProps) => {
+export const CommentsSection = ({ postId, currentUser }: CommentsSectionProps) => {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   
@@ -50,12 +51,14 @@ export const CommentsSection = ({ postId }: CommentsSectionProps) => {
   };
 
   const handleSaveEdit = async (commentId: string) => {
-    if (!editText.trim()) return;
+    if (!editText.trim() || !currentUser) return;
     
     try {
       await editComment({
         commentId: commentId as Id<"comments">,
         text: editText.trim(),
+        userId: currentUser.role === 'user' ? currentUser._id as Id<"users"> : undefined,
+        adminId: currentUser.role === 'admin' ? currentUser._id as Id<"admins"> : undefined,
       });
       setEditingCommentId(null);
       setEditText("");
@@ -151,8 +154,11 @@ export const CommentsSection = ({ postId }: CommentsSectionProps) => {
                     <span>{comment.likes}</span>
                   </button>
                   
-                  {/* Edit button - only show for user's own comments */}
-                  {comment.author?.type === "user" && (
+                  {/* Edit button - only show for comment author */}
+                  {currentUser && (
+                    (currentUser.role === 'user' && comment.userId === currentUser._id) ||
+                    (currentUser.role === 'admin' && comment.adminId === currentUser._id)
+                  ) && (
                     <button
                       onClick={() => handleEditComment(comment._id, comment.text)}
                       className="flex items-center space-x-1 hover:text-blue-400 transition-colors text-xs"

@@ -7,6 +7,8 @@ import { useAuth } from '../lib/auth';
 import { useRouter } from 'next/navigation';
 import { Id } from "@/convex/_generated/dataModel";
 import ImageCarousel from '../components/ImageCarousel';
+import { NotificationPanel } from "@/app/components/NotificationPanel";
+import { BadgeShop } from "@/app/components/BadgeShop";
 
 export default function PostsPage() {
   const { user, logout, isLoading } = useAuth();
@@ -14,11 +16,24 @@ export default function PostsPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showBadgeShop, setShowBadgeShop] = useState(false);
 
   const posts = useQuery(api.posts.getAllPosts);
   const likePost = useMutation(api.posts.likePost);
   const repostPost = useMutation(api.posts.repostPost);
   const bookmarkPost = useMutation(api.posts.bookmarkPost);
+  
+  // Additional queries for navigation features
+  const unreadCount = useQuery(api.notifications.getUnreadNotificationCount, 
+    user ? { userId: user._id as Id<"users"> } : "skip"
+  );
+  const userPoints = useQuery(api.points.getUserPoints,
+    user ? { userId: user._id as Id<"users"> } : "skip"
+  );
+  const equippedBadge = useQuery(api.badges.getEquippedBadge,
+    user ? { userId: user._id as Id<"users"> } : "skip"
+  );
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -79,13 +94,13 @@ export default function PostsPage() {
             <div className="h-0.5 bg-white w-full rounded-full"></div>
           </div>
         </button>
-        <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+        <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
           My Posts
         </div>
         <div className="relative">
           <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
+            className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
           >
             <span className="text-sm font-bold">{user.name.charAt(0).toUpperCase()}</span>
           </button>
@@ -94,7 +109,7 @@ export default function PostsPage() {
           {showProfileMenu && (
             <div className="absolute right-0 top-12 bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 min-w-80 z-50 border border-gray-700">
               <div className="flex items-center space-x-4 mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
                   <span className="text-xl font-bold">{user.name.charAt(0).toUpperCase()}</span>
                 </div>
                 <div>
@@ -116,6 +131,27 @@ export default function PostsPage() {
                   <span className="text-gray-400">Posts</span>
                   <span className="text-blue-400">{userPosts.length}</span>
                 </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Rectify Points</span>
+                  <span className="text-yellow-400 font-medium">⭐ {userPoints || 0}</span>
+                </div>
+                {equippedBadge?.badge ? (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Badge</span>
+                    <span className="flex items-center space-x-2">
+                      <span className="text-xl">{equippedBadge.badge.icon}</span>
+                      <div className="text-right">
+                        <div className="text-white font-medium">{equippedBadge.badge.name}</div>
+                        <div className="text-xs text-purple-400 capitalize">{equippedBadge.badge.rarity}</div>
+                      </div>
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Badge</span>
+                    <span className="text-gray-500">None equipped</span>
+                  </div>
+                )}
               </div>
               
               <button 
@@ -147,7 +183,7 @@ export default function PostsPage() {
           )}
           
           <div className="space-y-2">
-            <div className="text-3xl font-bold mb-8 px-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+            <div className="text-3xl font-bold mb-8 px-3 bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
               Rectify
             </div>
             
@@ -173,12 +209,40 @@ export default function PostsPage() {
                 <span className="text-xl font-medium">My Posts</span>
               </a>
               
-              <a href="#" className="flex items-center space-x-4 px-4 py-4 rounded-2xl hover:bg-gray-800/50 transition-all duration-200 relative">
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowNotifications(true);
+                  setShowMobileMenu(false);
+                }}
+                className="flex items-center space-x-4 px-4 py-4 rounded-2xl hover:bg-gray-800/50 transition-all duration-200 relative"
+              >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM5 17h5v5H5v-5zM5 3h5v5H5V3zM15 3h5v5h-5V3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h16a1 1 0 001-1v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a1 1 0 001 1z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v4m0 0l-2-2m2 2l2-2" />
                 </svg>
                 <span className="text-xl font-medium">Notifications</span>
-                <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse">3</span>
+                {unreadCount && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse">
+                    {unreadCount}
+                  </span>
+                )}
+              </a>
+              
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowBadgeShop(true);
+                  setShowMobileMenu(false);
+                }}
+                className="flex items-center space-x-4 px-4 py-4 rounded-2xl hover:bg-gray-800/50 transition-all duration-200"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <span className="text-xl font-medium">Badge Shop</span>
               </a>
             </nav>
           </div>
@@ -190,7 +254,7 @@ export default function PostsPage() {
           <div className="hidden lg:block sticky top-0 bg-black/80 backdrop-blur-md border-b border-gray-800 z-10">
             <div className="flex items-center justify-between p-6">
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
                   My Posts
                 </h1>
                 <p className="text-gray-400 text-sm mt-1">Your community contributions</p>
@@ -198,7 +262,7 @@ export default function PostsPage() {
               <div className="flex items-center space-x-4">
                 <button
                   onClick={() => router.push('/dashboard')}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 rounded-2xl px-6 py-3 font-bold text-sm shadow-lg hover:shadow-xl flex items-center space-x-2"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 rounded-2xl px-6 py-3 font-bold text-sm shadow-lg hover:shadow-xl flex items-center space-x-2"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -206,11 +270,27 @@ export default function PostsPage() {
                   <span>Create Post</span>
                 </button>
                 
+                {/* Desktop Notification Button */}
+                <button
+                  onClick={() => setShowNotifications(true)}
+                  className="relative w-12 h-12 bg-gray-800/50 hover:bg-gray-700 rounded-full flex items-center justify-center transition-all duration-200 border border-gray-700 hover:border-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h16a1 1 0 001-1v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a1 1 0 001 1z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v4m0 0l-2-2m2 2l2-2" />
+                  </svg>
+                  {unreadCount && unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse min-w-[20px] text-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+                
                 {/* Desktop Profile Button */}
                 <div className="relative">
                   <button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     <span className="text-lg font-bold">{user.name.charAt(0).toUpperCase()}</span>
                   </button>
@@ -218,7 +298,7 @@ export default function PostsPage() {
                   {showProfileMenu && (
                     <div className="absolute right-0 top-14 bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 min-w-80 z-50 border border-gray-700">
                       <div className="flex items-center space-x-4 mb-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
                           <span className="text-xl font-bold">{user.name.charAt(0).toUpperCase()}</span>
                         </div>
                         <div>
@@ -376,7 +456,7 @@ export default function PostsPage() {
           <div className="p-4 lg:p-6">
             {filteredPosts.length === 0 ? (
               <div className="text-center py-16">
-                <div className="w-16 h-16 lg:w-20 lg:h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-full flex items-center justify-center border border-gray-700/50">
+                <div className="w-16 h-16 lg:w-20 lg:h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-full flex items-center justify-center border border-gray-700/50">
                   <svg className="w-8 h-8 lg:w-10 lg:h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
@@ -394,7 +474,7 @@ export default function PostsPage() {
                 {activeTab === "all" && (
                   <button
                     onClick={() => router.push('/dashboard')}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 rounded-2xl px-6 lg:px-8 py-3 lg:py-4 font-bold shadow-lg hover:shadow-xl text-sm lg:text-base"
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 rounded-2xl px-6 lg:px-8 py-3 lg:py-4 font-bold shadow-lg hover:shadow-xl text-sm lg:text-base"
                   >
                     Create Your First Post
                   </button>
@@ -405,7 +485,7 @@ export default function PostsPage() {
                 {filteredPosts.map((post) => (
                   <div key={post._id} className="bg-gradient-to-br from-gray-900/50 to-gray-800/50 backdrop-blur-sm rounded-2xl lg:rounded-3xl p-4 lg:p-6 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300 hover:shadow-xl">
                     <div className="flex space-x-3 lg:space-x-4">
-                      <div className="w-10 h-10 lg:w-14 lg:h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 lg:w-14 lg:h-14 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center flex-shrink-0">
                         <span className="text-sm lg:text-lg font-bold">{post.user?.name?.[0].toUpperCase() || "U"}</span>
                       </div>
                       <div className="flex-1 min-w-0">
@@ -504,7 +584,7 @@ export default function PostsPage() {
                 Your Profile
               </h2>
               <div className="flex items-center space-x-4 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
                   <span className="font-bold">{user.name.charAt(0).toUpperCase()}</span>
                 </div>
                 <div>
@@ -556,6 +636,24 @@ export default function PostsPage() {
           </div>
         </div>
       </div>
+      
+      {/* Notification Panel */}
+      {showNotifications && user && (
+        <NotificationPanel 
+          user={user}
+          isOpen={showNotifications}
+          onClose={() => setShowNotifications(false)}
+        />
+      )}
+
+      {/* Badge Shop */}
+      {showBadgeShop && user && (
+        <BadgeShop 
+          user={user}
+          isOpen={showBadgeShop}
+          onClose={() => setShowBadgeShop(false)}
+        />
+      )}
     </div>
   );
 }

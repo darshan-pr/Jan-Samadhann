@@ -1,23 +1,26 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "./ConvexClientProvider";
 import { AuthProvider } from "./lib/auth";
 import { ThemeProvider } from "./context/ThemeContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
+
+// Note: Aptos font will be loaded via Google Fonts web API
 
 export const metadata: Metadata = {
-  title: "Rectify - Community-Driven Problem Solving",
-  description: "A platform to fix societal problems like potholes, roads, and water services through collective community action",
+  title: "Jan Samadhan - Community & Direct Digital Governance",
+  description: "A digital platform for community-driven problem solving and direct digital governance - connecting citizens with local authorities to resolve civic issues efficiently",
 };
 
 export default function RootLayout({
@@ -27,9 +30,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <head>
+        <link href="https://fonts.googleapis.com/css2?family=Aptos:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      </head>
+      <body className={`${inter.variable} ${poppins.variable}`}>
         <ConvexClientProvider>
           <AuthProvider>
             <ThemeProvider>

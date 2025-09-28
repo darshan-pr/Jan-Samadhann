@@ -32,8 +32,6 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
   const [selectedPriority, setSelectedPriority] = useState<"low" | "medium" | "high">("medium");
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [showAIGenerator, setShowAIGenerator] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [customIssueType, setCustomIssueType] = useState("");
 
@@ -132,12 +130,15 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
   };
 
   const generateComplaintWithAI = async () => {
-    if (!aiPrompt.trim()) return;
+    if (!postContent.trim()) return;
     
     setIsGenerating(true);
     
     try {
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyBldo07Sqf0DrjmX5mrZtqs-mFkbPsEh0o', {
+      // Improve existing content
+      const prompt = `Improve and enhance this community issue description while keeping the same context and meaning: "${postContent}". Make it clearer, more detailed, and more actionable while maintaining the same tone. Don't change it to a letter format - keep it as a natural description. Keep it under 200 words and maintain the core message.`;
+      
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -145,7 +146,7 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: `Generate a detailed community issue complaint based on this prompt: "${aiPrompt}". Make it specific, clear, and actionable. Include relevant details about the issue and its impact on the community. Keep it under 200 words.`
+              text: prompt
             }]
           }]
         })
@@ -155,8 +156,6 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
         const data = await response.json();
         const generatedText = data.candidates[0].content.parts[0].text;
         setPostContent(generatedText);
-        setShowAIGenerator(false);
-        setAiPrompt("");
       }
     } catch (error) {
       console.error('AI generation failed:', error);
@@ -167,7 +166,7 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
 
   const generateHashtags = async (description: string): Promise<string[]> => {
     try {
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyBldo07Sqf0DrjmX5mrZtqs-mFkbPsEh0o', {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -261,8 +260,6 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
     setLocation("");
     setCoordinates(null);
     setLocationError("");
-    setAiPrompt("");
-    setShowAIGenerator(false);
     setSelectedPriority("medium");
   };
 
@@ -347,6 +344,27 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
               <span className="text-xs lg:text-sm font-bold">{user.name.charAt(0).toUpperCase()}</span>
             </div>
             <div className="flex-1">
+              {/* Emergency Disclaimer Banner */}
+              <div className="mb-4 bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                <div className="flex items-start space-x-2">
+                  <div className="flex-shrink-0">
+                    <svg className="w-4 h-4 text-red-400 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-red-400 font-bold text-xs mb-1">Emergency Situations</h4>
+                    <p className="text-red-300 text-xs leading-relaxed">
+                      For emergencies requiring immediate response, use our 
+                      <a href="/emergency" className="text-red-200 font-bold underline hover:text-white transition-colors mx-1">
+                        Emergency Report System
+                      </a>
+                      instead.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="relative">
                 <textarea
                   value={postContent}
@@ -355,57 +373,25 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
                   className="w-full bg-gray-800/50 border border-gray-700 rounded-xl p-3 text-sm lg:text-base placeholder-gray-500 resize-none outline-none focus:border-blue-500 transition-all duration-200 min-h-[80px] lg:min-h-[100px]"
                   maxLength={500}
                 />
-                {!postContent && (
-                  <button
-                    onClick={() => setShowAIGenerator(true)}
-                    className="absolute bottom-2 right-2 bg-purple-600 hover:bg-purple-700 transition-colors rounded-full p-1.5 lg:p-2"
-                  >
-                    <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </button>
+                {postContent.trim() && (
+                  <div className="absolute bottom-2 right-2">
+                    <button
+                      onClick={generateComplaintWithAI}
+                      disabled={isGenerating}
+                      className="bg-green-600 hover:bg-green-700 disabled:opacity-50 transition-colors rounded-full p-1.5 lg:p-2 flex items-center justify-center"
+                      title="Improve description"
+                    >
+                      {isGenerating ? (
+                        <div className="w-4 h-4 lg:w-5 lg:h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 )}
               </div>
-              
-              {/* AI Generator Modal */}
-              {showAIGenerator && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-60 flex items-center justify-center p-4">
-                  <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md">
-                    <h3 className="text-xl font-bold mb-4 flex items-center">
-                      <svg className="w-6 h-6 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      AI Assistant
-                    </h3>
-                    <textarea
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      placeholder="Describe the issue briefly..."
-                      className="w-full bg-gray-700 border border-gray-600 rounded-xl p-3 text-white placeholder-gray-400 resize-none outline-none focus:border-purple-500 transition-colors"
-                      rows={3}
-                    />
-                    <div className="flex space-x-3 mt-4">
-                      <button
-                        onClick={() => setShowAIGenerator(false)}
-                        className="flex-1 bg-gray-700 hover:bg-gray-600 transition-colors rounded-xl py-2 px-4"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={generateComplaintWithAI}
-                        disabled={!aiPrompt.trim() || isGenerating}
-                        className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 transition-colors rounded-xl py-2 px-4 flex items-center justify-center"
-                      >
-                        {isGenerating ? (
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                          "Generate"
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Location Section */}
               <div className="mt-3 space-y-2">
@@ -444,6 +430,33 @@ export const PostModal = ({ user, isOpen, onClose }: PostModalProps) => {
                 
                 {locationError && (
                   <p className="text-red-400 text-xs">{locationError}</p>
+                )}
+                
+                {/* Location Preview Map */}
+                {coordinates && (
+                  <div className="mt-3">
+                    <div className="relative bg-gray-800 rounded-lg overflow-hidden h-32 lg:h-40 border border-gray-700">
+                      <iframe
+                        src={`https://api.maptiler.com/maps/satellite/?key=${process.env.NEXT_PUBLIC_MAPTILER_API_KEY}#16.2/${coordinates.lat}/${coordinates.lng}`}
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        allowFullScreen
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                      />
+                      <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                        📍 Location Preview
+                      </div>
+                    </div>
+                    {fullAddress && (
+                      <div className="mt-2 p-2 bg-gray-800/30 rounded-lg border border-gray-700/50">
+                        <p className="text-xs text-gray-400 line-clamp-2">
+                          📍 {fullAddress}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
                 
                 <div className="grid grid-cols-1 gap-2">

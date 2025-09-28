@@ -45,8 +45,8 @@ export default function ImageCarousel({ photos }: ImageCarouselProps) {
   // Single image display
   if (photos.length === 1) {
     return (
-      <div className="mb-4 rounded-xl lg:rounded-2xl overflow-hidden">
-        <div className="relative aspect-square max-w-md mx-auto">
+      <div className="mb-4 rounded-xl lg:rounded-2xl overflow-hidden border-2 border-gray-700/50 md:border-0 shadow-lg">
+        <div className="relative aspect-square max-w-xs sm:max-w-sm lg:max-w-md mx-auto">
           {photos[0].url ? (
             <img
               src={photos[0].url}
@@ -70,8 +70,8 @@ export default function ImageCarousel({ photos }: ImageCarouselProps) {
   // Multiple images carousel
   return (
     <>
-      <div className="mb-4 rounded-xl lg:rounded-2xl overflow-hidden">
-        <div className="relative aspect-square max-w-md mx-auto bg-black">
+      <div className="mb-4 rounded-xl lg:rounded-2xl overflow-hidden border-2 border-gray-700/50 md:border-0 shadow-lg">
+        <div className="relative aspect-square max-w-xs sm:max-w-sm lg:max-w-md mx-auto bg-black">
           {/* Main Image */}
           {photos[currentIndex]?.url ? (
             <img

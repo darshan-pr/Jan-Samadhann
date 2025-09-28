@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import { useState, useEffect } from "react";
@@ -6,38 +8,36 @@ import { useAuth } from '../lib/auth';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import ImageCarousel from '../components/ImageCarousel';
 
-interface Report {
-  id: string;
-  type: string;
-  description: string;
-  location: string;
-  coordinates: { lat: number; lng: number } | null;
-  timestamp: string;
-  status: string;
-  upvotes: number;
-  image?: string;
-}
+// Import admin components
+import { AdminSidebar } from './components/AdminSidebar';
+import { AdminStats } from './components/AdminStats';
+import { PostsTable } from './components/PostsTable';
+import { PostView } from './components/PostView';
+import { Analytics } from './components/Analytics';
+import { DepartmentManagement } from './components/DepartmentManagement';
+import { EmergencyManagement } from './components/EmergencyManagement';
 
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, logout, isLoading } = useAuth();
   
-  // Fetch high-vote posts from Convex
-  const highVotePosts = useQuery(api.posts.getPostsWithHighVotes);
-  const allPosts = useQuery(api.posts.getAllPosts);
-  const updatePostStatus = useMutation(api.posts.updatePostStatus);
-  const addAdminComment = useMutation(api.comments.addAdminComment);
-  
-  const [reports, setReports] = useState<Report[]>([]);
-  const [filteredReports, setFilteredReports] = useState<Report[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedType, setSelectedType] = useState('all');
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [activeTab, setActiveTab] = useState('reports'); // 'reports' or 'high-votes'
+  // State management
+  const [activeSection, setActiveSection] = useState('overview');
+  const [selectedPost, setSelectedPost] = useState<any>(null);
   const [adminComments, setAdminComments] = useState<{[key: string]: string}>({});
   const [submittingComment, setSubmittingComment] = useState<{[key: string]: boolean}>({});
+
+  // Convex queries and mutations
+  const highVotePosts = useQuery(api.posts.getPostsWithHighVotes);
+  const allPosts = useQuery(api.posts.getAllPosts);
+  const emergencyPosts = useQuery(api.emergencyPosts.getAllEmergencyPosts);
+  const emergencyStats = useQuery(api.emergencyPosts.getEmergencyStats);
+  const pendingEmergencyCount = useQuery(api.emergencyPosts.getPendingEmergencyCount);
+  const updatePostStatus = useMutation(api.posts.updatePostStatus);
+  const updateEmergencyStatus = useMutation(api.emergencyPosts.updateEmergencyStatus);
+  const routeEmergencyToDepartment = useMutation(api.emergencyPosts.routeEmergencyToDepartment);
+  const addAdminComment = useMutation(api.comments.addAdminComment);
 
   // Redirect if not authenticated or not admin
   useEffect(() => {
@@ -46,35 +46,13 @@ export default function AdminDashboard() {
     }
   }, [user, isLoading, router]);
 
-  // Load reports from localStorage on component mount
-  useEffect(() => {
-    const savedReports = localStorage.getItem("communityReports");
-    if (savedReports) {
-      const reportsData = JSON.parse(savedReports);
-      setReports(reportsData);
-      setFilteredReports(reportsData);
-    }
-  }, []);
-
-  // Filter reports based on status and type
-  useEffect(() => {
-    let filtered = reports;
-    
-    if (selectedStatus !== 'all') {
-      filtered = filtered.filter(report => report.status === selectedStatus);
-    }
-    
-    if (selectedType !== 'all') {
-      filtered = filtered.filter(report => report.type === selectedType);
-    }
-    
-    setFilteredReports(filtered);
-  }, [reports, selectedStatus, selectedType]);
-
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-white text-slate-900 flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-8 h-8 border-2 border-slate-800 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-slate-600">Loading admin dashboard...</p>
+        </div>
       </div>
     );
   }
@@ -82,16 +60,6 @@ export default function AdminDashboard() {
   if (!user || user.role !== 'admin') {
     return null;
   }
-
-  const handleStatusUpdate = (reportId: string, newStatus: string) => {
-    const updatedReports = reports.map(report => 
-      report.id === reportId 
-        ? { ...report, status: newStatus }
-        : report
-    );
-    setReports(updatedReports);
-    localStorage.setItem("communityReports", JSON.stringify(updatedReports));
-  };
 
   const handleLogout = () => {
     logout();
@@ -111,9 +79,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAdminComment = async (postId: string) => {
-    const commentText = adminComments[postId]?.trim();
-    if (!commentText || !user) return;
+  const handleAdminComment = async (postId: string, commentText: string) => {
+    if (!commentText.trim() || !user) return;
 
     try {
       setSubmittingComment({ ...submittingComment, [postId]: true });
@@ -121,7 +88,7 @@ export default function AdminDashboard() {
         postId: postId as Id<"posts">,
         adminId: user._id as Id<"admins">,
         text: commentText,
-        isPinned: true // Always pin admin comments
+        isPinned: true
       });
       setAdminComments({ ...adminComments, [postId]: "" });
     } catch (error) {
@@ -132,353 +99,268 @@ export default function AdminDashboard() {
     }
   };
 
-  const statusOptions = ['Open', 'In Progress', 'Resolved', 'Closed'];
-  const typeOptions = ['🕳️ Pothole', '🚧 Road Damage', '💧 Water Issue', '🗑️ Waste Management', '💡 Street Light', '🚦 Traffic Signal', '🌳 Trees/Vegetation', '📋 Other'];
+  // Calculate statistics
+  const totalPosts = allPosts?.length || 0;
+  const highVoteCount = highVotePosts?.length || 0;
+  const inProgressPosts = allPosts?.filter(p => p.status === 'in_progress').length || 0;
+  const resolvedPosts = allPosts?.filter(p => p.status === 'resolved').length || 0;
+  const pendingPosts = allPosts?.filter(p => p.status === 'submitted').length || 0;
+  const rejectedPosts = allPosts?.filter(p => p.status === 'rejected').length || 0;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Open': return 'bg-red-900/30 text-red-300';
-      case 'In Progress': return 'bg-yellow-900/30 text-yellow-300';
-      case 'Resolved': return 'bg-green-900/30 text-green-300';
-      case 'Closed': return 'bg-gray-900/30 text-gray-300';
-      default: return 'bg-gray-900/30 text-gray-300';
+  // Get posts based on active section
+  const getPostsForSection = () => {
+    switch (activeSection) {
+      case 'high-priority':
+        return highVotePosts || [];
+      case 'all-posts':
+        return allPosts || [];
+      default:
+        return highVotePosts || [];
+    }
+  };
+
+  const renderMainContent = () => {
+    switch (activeSection) {
+      case 'overview':
+        return (
+          <div className="space-y-8">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-800 mb-2">
+                Admin Dashboard Overview
+              </h1>
+              <p className="text-slate-600">Monitor and manage community reports efficiently</p>
+            </div>
+            
+            <AdminStats
+              totalPosts={totalPosts}
+              highVotePosts={highVoteCount}
+              inProgressPosts={inProgressPosts}
+              resolvedPosts={resolvedPosts}
+              pendingPosts={pendingPosts}
+              rejectedPosts={rejectedPosts}
+            />
+
+            {/* Recent High Priority Posts */}
+            <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">Recent High Priority Posts</h2>
+                  <p className="text-slate-600 text-sm">Posts requiring immediate attention</p>
+                </div>
+                <button
+                  onClick={() => setActiveSection('high-priority')}
+                  className="bg-slate-800 hover:bg-slate-700 text-white rounded-lg px-4 py-2 font-medium transition-colors"
+                >
+                  View All
+                </button>
+              </div>
+              
+              {highVotePosts && highVotePosts.length > 0 ? (
+                <div className="space-y-4">
+                  {highVotePosts.slice(0, 3).map((post) => (
+                    <div key={post._id} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-bold text-white">{post.user?.name?.[0]?.toUpperCase() || "U"}</span>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <h3 className="font-medium text-slate-800">{post.user?.name}</h3>
+                              <span className="text-slate-400 text-sm">•</span>
+                              <span className="text-slate-400 text-sm">{post.city}</span>
+                            </div>
+                            <p className="text-slate-600 text-sm mb-2">{post.description.slice(0, 100)}...</p>
+                            <div className="flex items-center space-x-2">
+                              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs border border-blue-200">
+                                {post.issueType}
+                              </span>
+                              <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs border border-red-200">
+                                {post.likes} votes
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedPost(post);
+                            setActiveSection('post-detail');
+                          }}
+                          className="bg-slate-800 hover:bg-slate-700 text-white rounded-lg px-3 py-1 text-sm font-medium transition-colors"
+                        >
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-slate-500">
+                  <p>No high priority posts at the moment</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'emergency':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-800 mb-2">Emergency Management</h1>
+              <p className="text-slate-600">Monitor and respond to urgent civic emergency reports</p>
+            </div>
+            
+            <EmergencyManagement
+              emergencyPosts={emergencyPosts || []}
+              emergencyStats={emergencyStats}
+              user={user}
+              onPostSelect={(post) => {
+                setSelectedPost(post);
+                setActiveSection('post-detail');
+              }}
+            />
+          </div>
+        );
+
+      case 'high-priority':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-800 mb-2">High Priority Posts</h1>
+              <p className="text-slate-600">Posts with 10+ votes requiring immediate attention ({highVoteCount} posts)</p>
+            </div>
+            
+            <PostsTable
+              posts={highVotePosts || []}
+              onPostSelect={(post) => {
+                setSelectedPost(post);
+                setActiveSection('post-detail');
+              }}
+              selectedPost={selectedPost}
+            />
+          </div>
+        );
+
+      case 'all-posts':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-800 mb-2">All Posts</h1>
+              <p className="text-slate-600">Complete list of all community reports ({totalPosts} posts)</p>
+            </div>
+            
+            <PostsTable
+              posts={allPosts || []}
+              onPostSelect={(post) => {
+                setSelectedPost(post);
+                setActiveSection('post-detail');
+              }}
+              selectedPost={selectedPost}
+            />
+          </div>
+        );
+
+      case 'departments':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-800 mb-2">Department Management</h1>
+              <p className="text-slate-600">Monitor department performance and manage routing status</p>
+            </div>
+            
+            <DepartmentManagement user={user} />
+          </div>
+        );
+
+      case 'analytics':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-800 mb-2">Analytics & Insights</h1>
+              <p className="text-slate-600">Comprehensive analysis of community reports and trends</p>
+            </div>
+            
+            <Analytics posts={allPosts || []} />
+          </div>
+        );
+
+      case 'users':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-800 mb-2">User Management</h1>
+              <p className="text-slate-600">Manage community users and their activities</p>
+            </div>
+            
+            <div className="bg-white rounded-xl p-12 border border-slate-200 shadow-sm text-center">
+              <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-slate-700 mb-2">User Management</h3>
+              <p className="text-slate-500">This feature is coming soon. You&apos;ll be able to manage users, view their activity, and handle user-related issues.</p>
+            </div>
+          </div>
+        );
+
+      case 'post-detail':
+        return selectedPost ? (
+          <div className="space-y-6">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setActiveSection('overview')}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg px-3 py-2 font-medium transition-colors flex items-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span>Back to Overview</span>
+              </button>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-800">Post Details</h1>
+                <p className="text-slate-600">Manage and respond to community report</p>
+              </div>
+            </div>
+            
+            <PostView
+              post={selectedPost}
+              user={user}
+              onStatusUpdate={handlePostStatusUpdate}
+              onAddComment={handleAdminComment}
+              isSubmittingComment={submittingComment[selectedPost._id] || false}
+            />
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-slate-500">No post selected</p>
+          </div>
+        );
+
+      default:
+        return (
+          <div className="text-center py-12">
+            <p className="text-slate-500">Select a section from the sidebar</p>
+          </div>
+        );
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans">
-      {/* Header */}
-      <div className="border-b border-gray-800 p-4">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div>
-            <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-            <p className="text-gray-400">Manage community reports</p>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="font-semibold">{user.email}</p>
-              <p className="text-gray-400 text-sm">Administrator</p>
-            </div>
-            <button
-              onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center relative"
-            >
-              <span className="text-sm font-bold">A</span>
-              
-              {/* Profile Menu */}
-              {showProfileMenu && (
-                <div className="absolute right-0 top-12 bg-gray-800 rounded-lg shadow-lg p-4 min-w-48 z-50">
-                  <div className="border-b border-gray-700 pb-3 mb-3">
-                    <p className="font-semibold">{user.email}</p>
-                    <p className="text-gray-400 text-sm">Administrator</p>
-                  </div>
-                  <button 
-                    onClick={handleLogout}
-                    className="w-full text-left px-2 py-1 text-red-400 hover:bg-gray-700 rounded"
-                  >
-                    Sign out
-                  </button>
-                </div>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto p-4">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-blue-900/50 to-blue-800/50 rounded-lg p-4 border border-blue-500/30">
-            <h3 className="text-blue-300 text-sm font-medium">Total Posts</h3>
-            <p className="text-2xl font-bold text-blue-400">{allPosts?.length || 0}</p>
-            <p className="text-xs text-blue-300/70 mt-1">All community posts</p>
-          </div>
-          <div className="bg-gradient-to-br from-red-900/50 to-red-800/50 rounded-lg p-4 border border-red-500/30">
-            <h3 className="text-red-300 text-sm font-medium">High-Vote Posts</h3>
-            <p className="text-2xl font-bold text-red-400">
-              {highVotePosts?.length || 0}
-            </p>
-            <p className="text-xs text-red-300/70 mt-1">Posts with 10+ votes</p>
-          </div>
-          <div className="bg-gradient-to-br from-yellow-900/50 to-yellow-800/50 rounded-lg p-4 border border-yellow-500/30">
-            <h3 className="text-yellow-300 text-sm font-medium">In Progress</h3>
-            <p className="text-2xl font-bold text-yellow-400">
-              {allPosts?.filter(p => p.status === 'in_progress').length || 0}
-            </p>
-            <p className="text-xs text-yellow-300/70 mt-1">Being addressed</p>
-          </div>
-          <div className="bg-gradient-to-br from-green-900/50 to-green-800/50 rounded-lg p-4 border border-green-500/30">
-            <h3 className="text-green-300 text-sm font-medium">Resolved</h3>
-            <p className="text-2xl font-bold text-green-400">
-              {allPosts?.filter(p => p.status === 'resolved').length || 0}
-            </p>
-            <p className="text-xs text-green-300/70 mt-1">Successfully completed</p>
-          </div>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="bg-gray-900/50 rounded-lg p-1 mb-6 flex">
-          <button
-            onClick={() => setActiveTab('reports')}
-            className={`flex-1 px-4 py-3 rounded-md font-medium transition-all duration-200 ${
-              activeTab === 'reports' 
-                ? 'bg-blue-600 text-white shadow-lg' 
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
-          >
-            Community Reports
-          </button>
-          <button
-            onClick={() => setActiveTab('high-votes')}
-            className={`flex-1 px-4 py-3 rounded-md font-medium transition-all duration-200 ${
-              activeTab === 'high-votes' 
-                ? 'bg-blue-600 text-white shadow-lg' 
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
-          >
-            High-Vote Posts ({highVotePosts?.length || 0})
-          </button>
-        </div>
-
-        {/* Conditional Content */}
-        {activeTab === 'reports' ? (
-          <>
-            {/* Filters */}
-            <div className="bg-gray-900/50 rounded-lg p-4 mb-6">
-              <h3 className="font-semibold mb-3">Filters</h3>
-              <div className="flex flex-wrap gap-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Status</label>
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
-                  >
-                    <option value="all">All Status</option>
-                    {statusOptions.map(status => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Type</label>
-                  <select
-                    value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value)}
-                    className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
-                  >
-                    <option value="all">All Types</option>
-                    {typeOptions.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Reports Table */}
-            <div className="bg-gray-900/50 rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                {filteredReports.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-800 rounded-full flex items-center justify-center">
-                      <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                      </svg>
-                    </div>
-                    <h3 className="text-xl font-bold mb-2">No reports found</h3>
-                    <p>Try adjusting your filters or wait for new reports.</p>
-                  </div>
-                ) : (
-                  <table className="w-full">
-                    <thead className="bg-gray-800">
-                      <tr>
-                        <th className="text-left p-4 font-medium">Type</th>
-                        <th className="text-left p-4 font-medium">Description</th>
-                        <th className="text-left p-4 font-medium">Location</th>
-                        <th className="text-left p-4 font-medium">Status</th>
-                        <th className="text-left p-4 font-medium">Upvotes</th>
-                        <th className="text-left p-4 font-medium">Date</th>
-                        <th className="text-left p-4 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredReports.map((report, index) => (
-                        <tr key={report.id} className={`border-t border-gray-700 ${index % 2 === 0 ? 'bg-gray-800/30' : ''}`}>
-                          <td className="p-4">
-                            <span className="inline-block bg-blue-900/30 text-blue-300 px-2 py-1 rounded-full text-xs font-medium">
-                              {report.type}
-                            </span>
-                          </td>
-                          <td className="p-4 max-w-xs">
-                            <p className="truncate" title={report.description}>
-                              {report.description}
-                            </p>
-                          </td>
-                          <td className="p-4 max-w-xs">
-                            <p className="truncate text-sm text-gray-400" title={report.location}>
-                              {report.location}
-                            </p>
-                          </td>
-                          <td className="p-4">
-                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
-                              {report.status}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span className="flex items-center space-x-1">
-                              <svg className="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                              </svg>
-                              <span className="text-sm">{report.upvotes}</span>
-                            </span>
-                          </td>
-                          <td className="p-4 text-sm text-gray-400">
-                            {new Date(report.timestamp).toLocaleDateString()}
-                          </td>
-                          <td className="p-4">
-                            <select
-                              value={report.status}
-                              onChange={(e) => handleStatusUpdate(report.id, e.target.value)}
-                              className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs outline-none focus:border-blue-500 transition-colors"
-                            >
-                              {statusOptions.map(status => (
-                                <option key={status} value={status}>{status}</option>
-                              ))}
-                            </select>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          </>
-        ) : (
-          /* High-Vote Posts Section */
-          <div className="bg-gray-900/50 rounded-lg overflow-hidden">
-            <div className="p-6 border-b border-gray-700">
-              <h3 className="text-xl font-bold mb-2">Posts with High Community Support (10+ Votes)</h3>
-              <p className="text-gray-400">These posts require immediate attention from administrators</p>
-            </div>
-            
-            {!highVotePosts || highVotePosts.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gray-800 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold mb-2">No high-vote posts</h3>
-                <p>No posts have reached 10+ votes yet.</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-700">
-                {highVotePosts.map((post) => (
-                  <div key={post._id} className="p-6">
-                    {/* Post Header */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                          <span className="text-lg font-bold">{post.user?.name?.[0]?.toUpperCase() || "U"}</span>
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-lg">{post.user?.name || "Unknown User"}</h4>
-                          <p className="text-gray-400 text-sm">Phone: {post.user?.phone || "N/A"}</p>
-                          <p className="text-gray-400 text-sm">Created: {new Date(post.createdAt).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="bg-red-900/30 text-red-300 px-3 py-1 rounded-full text-sm font-medium border border-red-500/30">
-                          {post.likes} votes
-                        </div>
-                        <div className={`px-3 py-1 rounded-full text-sm font-medium border ${
-                          post.priority === "high" ? "bg-red-900/30 text-red-300 border-red-500/30" :
-                          post.priority === "medium" ? "bg-yellow-900/30 text-yellow-300 border-yellow-500/30" :
-                          "bg-green-900/30 text-green-300 border-green-500/30"
-                        }`}>
-                          {post.priority} priority
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Post Content */}
-                    <div className="mb-4">
-                      <div className="flex items-center space-x-2 mb-3">
-                        <span className="bg-blue-900/30 text-blue-300 px-3 py-1 rounded-full text-sm font-medium border border-blue-500/30">
-                          {post.issueType}
-                        </span>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium border ${
-                          post.status === "resolved" ? "bg-green-900/30 text-green-300 border-green-500/30" :
-                          post.status === "in_progress" ? "bg-blue-900/30 text-blue-300 border-blue-500/30" :
-                          post.status === "rejected" ? "bg-red-900/30 text-red-300 border-red-500/30" :
-                          "bg-gray-900/30 text-gray-300 border-gray-500/30"
-                        }`}>
-                          {post.status.replace("_", " ")}
-                        </span>
-                      </div>
-                      <p className="text-white mb-3">{post.description}</p>
-                      <div className="bg-gray-800/50 rounded-lg p-3 mb-4">
-                        <h5 className="font-semibold text-sm text-gray-400 mb-1">Location</h5>
-                        <p className="text-white">{post.address}, {post.city}</p>
-                        {post.coordinates && (
-                          <p className="text-gray-400 text-sm mt-1">
-                            Coordinates: {post.coordinates.lat.toFixed(6)}, {post.coordinates.lng.toFixed(6)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Images */}
-                    <ImageCarousel photos={post.photos} />
-
-                    {/* Admin Actions */}
-                    <div className="mt-6 space-y-4">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <label className="block text-sm text-gray-400 mb-1">Update Status</label>
-                          <select
-                            value={post.status}
-                            onChange={(e) => handlePostStatusUpdate(post._id, e.target.value)}
-                            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
-                          >
-                            <option value="submitted">Submitted</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="resolved">Resolved</option>
-                            <option value="rejected">Rejected</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Admin Comment */}
-                      <div>
-                        <label className="block text-sm text-gray-400 mb-2">Add Admin Comment (will be pinned)</label>
-                        <div className="flex space-x-3">
-                          <textarea
-                            value={adminComments[post._id] || ""}
-                            onChange={(e) => setAdminComments({ ...adminComments, [post._id]: e.target.value })}
-                            placeholder="Write an official response to this post..."
-                            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors resize-none"
-                            rows={3}
-                          />
-                          <button
-                            onClick={() => handleAdminComment(post._id)}
-                            disabled={!adminComments[post._id]?.trim() || submittingComment[post._id]}
-                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
-                          >
-                            {submittingComment[post._id] ? "Posting..." : "Post Comment"}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+    <div className="min-h-screen bg-white text-slate-900 flex">
+      <AdminSidebar
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+        user={user}
+        onLogout={handleLogout}
+        emergencyCount={pendingEmergencyCount}
+      />
+      
+      <div className="flex-1 ml-64 overflow-auto">
+        <main className="p-6 lg:p-8 min-h-screen">
+          {renderMainContent()}
+        </main>
       </div>
     </div>
   );

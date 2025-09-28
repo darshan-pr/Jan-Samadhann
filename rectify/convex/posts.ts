@@ -45,6 +45,7 @@ export const getAllPosts = query({
       .query("posts")
       .withIndex("by_created_at")
       .order("desc")
+      .filter((q) => q.neq(q.field("isEmergency"), true)) // Exclude emergency posts
       .collect();
 
     const postsWithUserInfo = await Promise.all(
@@ -80,6 +81,7 @@ export const getPostsByUser = query({
     const posts = await ctx.db
       .query("posts")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.neq(q.field("isEmergency"), true)) // Exclude emergency posts
       .order("desc")
       .collect();
 
@@ -251,7 +253,12 @@ export const getPostsWithHighVotes = query({
       .query("posts")
       .withIndex("by_likes")
       .order("desc")
-      .filter((q) => q.gte(q.field("likes"), 10))
+      .filter((q) => 
+        q.and(
+          q.gte(q.field("likes"), 10),
+          q.neq(q.field("isEmergency"), true) // Exclude emergency posts
+        )
+      )
       .collect();
 
     const postsWithUserInfo = await Promise.all(
@@ -312,7 +319,12 @@ export const getTrendingIssues = query({
     let posts = await ctx.db
       .query("posts")
       .withIndex("by_created_at")
-      .filter((q) => q.gte(q.field("createdAt"), sevenDaysAgo))
+      .filter((q) => 
+        q.and(
+          q.gte(q.field("createdAt"), sevenDaysAgo),
+          q.neq(q.field("isEmergency"), true) // Exclude emergency posts
+        )
+      )
       .collect();
     
     // Filter by city if provided
@@ -405,7 +417,12 @@ export const getCityTrendingIssues = query({
     const posts = await ctx.db
       .query("posts")
       .withIndex("by_created_at")
-      .filter((q) => q.gte(q.field("createdAt"), sevenDaysAgo))
+      .filter((q) => 
+        q.and(
+          q.gte(q.field("createdAt"), sevenDaysAgo),
+          q.neq(q.field("isEmergency"), true) // Exclude emergency posts
+        )
+      )
       .collect()
       .then(posts => posts.filter(post => post.city === args.city));
 
@@ -483,7 +500,12 @@ export const getGlobalTrendingIssues = query({
     const posts = await ctx.db
       .query("posts")
       .withIndex("by_created_at")
-      .filter((q) => q.gte(q.field("createdAt"), sevenDaysAgo))
+      .filter((q) => 
+        q.and(
+          q.gte(q.field("createdAt"), sevenDaysAgo),
+          q.neq(q.field("isEmergency"), true) // Exclude emergency posts
+        )
+      )
       .collect();
 
     // Calculate trending score for each issue type

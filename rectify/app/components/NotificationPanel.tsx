@@ -52,7 +52,7 @@ export const NotificationPanel = ({ user, isOpen, onClose }: NotificationPanelPr
 
   const getNotificationMessage = (notification: {
     _id: Id<"notifications">;
-    type: "status_update" | "admin_comment" | "like" | "reply" | "mention" | "repost";
+    type: "status_update" | "admin_comment" | "like" | "reply" | "mention" | "repost" | "emergency_received" | "emergency_routed" | "emergency_acknowledged" | "emergency_update";
     message: string;
     isRead: boolean;
     createdAt: string;
@@ -73,6 +73,34 @@ export const NotificationPanel = ({ user, isOpen, onClose }: NotificationPanelPr
           color: 'text-purple-400',
           priority: 'high'
         };
+      case 'emergency_received':
+        return {
+          title: "Emergency Alert Received",
+          message: notification.message || "Emergency alert has been received.",
+          color: 'text-red-400',
+          priority: 'high'
+        };
+      case 'emergency_routed':
+        return {
+          title: "Emergency Alert Routed",
+          message: notification.message || "Emergency alert has been routed to relevant department.",
+          color: 'text-orange-400',
+          priority: 'high'
+        };
+      case 'emergency_acknowledged':
+        return {
+          title: "Emergency Acknowledged",
+          message: notification.message || "Emergency has been acknowledged by authorities.",
+          color: 'text-yellow-400',
+          priority: 'high'
+        };
+      case 'emergency_update':
+        return {
+          title: "Emergency Update",
+          message: notification.message || "There's an update on the emergency situation.",
+          color: 'text-green-400',
+          priority: 'high'
+        };
       default:
         return {
           title: "Notification",
@@ -84,7 +112,7 @@ export const NotificationPanel = ({ user, isOpen, onClose }: NotificationPanelPr
   };
 
   const getStatusDetails = (notification: {
-    type: "status_update" | "admin_comment" | "like" | "reply" | "mention" | "repost";
+    type: "status_update" | "admin_comment" | "like" | "reply" | "mention" | "repost" | "emergency_received" | "emergency_routed" | "emergency_acknowledged" | "emergency_update";
     message: string;
   }) => {
     if (notification.type !== 'status_update') return null;
@@ -199,14 +227,17 @@ export const NotificationPanel = ({ user, isOpen, onClose }: NotificationPanelPr
             <div className="ml-4 border-l-2 border-gray-700 pl-4 space-y-4">
               {group.notifications.map((notification: {
                 _id: Id<"notifications">;
-                type: "status_update" | "admin_comment" | "like" | "reply" | "mention" | "repost";
+                type: "status_update" | "admin_comment" | "like" | "reply" | "mention" | "repost" | "emergency_received" | "emergency_routed" | "emergency_acknowledged" | "emergency_update";
                 message: string;
                 isRead: boolean;
                 createdAt: string;
                 fromAdmin?: { email: string } | null;
-              }, index: number) => {
+              }) => {
                 const { title, color } = getNotificationMessage(notification);
-                const statusDetails = getStatusDetails(notification);
+                const statusDetails = getStatusDetails({
+                  type: notification.type,
+                  message: notification.message,
+                });
 
                 return (
                   <div
@@ -374,7 +405,7 @@ export const NotificationPanel = ({ user, isOpen, onClose }: NotificationPanelPr
                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
               >
-                All ({adminNotifications.length})
+                All{adminNotifications.length > 0 ? ` (${adminNotifications.length})` : ''}
               </button>
               <button
                 onClick={() => setShowUnreadOnly(true)}
@@ -384,7 +415,7 @@ export const NotificationPanel = ({ user, isOpen, onClose }: NotificationPanelPr
                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
               >
-                Unread ({adminNotifications.filter(n => !n.isRead).length})
+                Unread{adminNotifications.filter(n => !n.isRead).length > 0 ? ` (${adminNotifications.filter(n => !n.isRead).length})` : ''}
               </button>
             </div>
             {unreadCount && unreadCount > 0 && (

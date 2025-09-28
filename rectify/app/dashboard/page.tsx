@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
+import Image from "next/image";
 import { useAuth } from '../lib/auth';
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -95,21 +96,26 @@ export default function Dashboard() {
             <div className="h-0.5 bg-white w-full rounded-full"></div>
           </div>
         </button>
-        <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-          Rectify
+        <div className="flex items-center space-x-2">
+          <Image src="/logo.png" alt="Jan Samadhan" width={32} height={32} />
+          <div>
+            <div className="text-lg font-bold bg-gradient-to-r from-blue-400 via-green-400 to-yellow-400 bg-clip-text text-transparent" style={{ fontFamily: 'Aptos, sans-serif' }}>
+              Jan Samadhan
+            </div>
+            <div className="text-xs text-gray-400 leading-none">Digital Governance</div>
+          </div>
         </div>
         <div className="flex items-center space-x-3">
           <button
             onClick={() => setShowNotifications(true)}
             className="relative p-2 rounded-xl hover:bg-gray-800 transition-all duration-200"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h16a1 1 0 001-1v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a1 1 0 001 1z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v4m0 0l-2-2m2 2l2-2" />
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
             </svg>
             {unreadCount && unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse">
-                {unreadCount}
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold animate-pulse">
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </button>
@@ -179,8 +185,14 @@ export default function Dashboard() {
           )}
           
           <div className="space-y-2">
-            <div className="text-3xl font-bold mb-8 px-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Rectify
+            <div className="flex items-center space-x-3 px-3 mb-8">
+              <Image src="/logo.png" alt="Jan Samadhan" width={40} height={40} />
+              <div>
+                <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-green-400 to-yellow-400 bg-clip-text text-transparent" style={{ fontFamily: 'Aptos, sans-serif' }}>
+                  Jan Samadhan
+                </div>
+                <div className="text-xs text-gray-400 leading-none">Community & Direct Digital Governance</div>
+              </div>
             </div>
             
             <nav className="space-y-2">
@@ -193,6 +205,20 @@ export default function Dashboard() {
                   <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                 </svg>
                 <span className="text-xl font-medium">Home</span>
+              </a>
+              
+              <a 
+                href="/emergency" 
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center space-x-4 px-4 py-4 rounded-2xl bg-red-600/20 border border-red-500/30 text-red-400 hover:bg-red-600/30 transition-all duration-200"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.726-.833-2.496 0L4.318 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <span className="text-xl font-medium animate-pulse">Emergency</span>
+                <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                  URGENT
+                </span>
               </a>
               
               <a 
@@ -227,11 +253,11 @@ export default function Dashboard() {
                 className="flex items-center space-x-4 px-4 py-4 rounded-2xl hover:bg-gray-800/50 transition-all duration-200 relative"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM5 17h5v5H5v-5zM5 3h5v5H5V3zM15 3h5v5h-5V3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM9 14.25c0-3.07 2.355-5.625 5.25-5.625s5.25 2.555 5.25 5.625v.75c0 .414.336.75.75.75h.75a.75.75 0 01.75.75c0 3.038-2.462 5.5-5.5 5.5s-5.5-2.462-5.5-5.5a.75.75 0 01.75-.75h.75a.75.75 0 00.75-.75v-.75z" />
                 </svg>
                 <span className="text-xl font-medium">Notifications</span>
                 {unreadCount && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse">
+                  <span className="absolute top-1 right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse">
                     {unreadCount}
                   </span>
                 )}
@@ -245,11 +271,14 @@ export default function Dashboard() {
           {/* Simple Header - No tabs */}
           <div className="hidden lg:block sticky top-0 bg-black/80 backdrop-blur-md border-b border-gray-800 z-10 p-4 lg:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                  Community Feed
-                </h1>
-                <p className="text-gray-400 text-sm mt-1">Share and discover community issues</p>
+              <div className="flex items-center space-x-4">
+                <Image src="/logo.png" alt="Jan Samadhan" width={48} height={48} />
+                <div>
+                  <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-400 via-green-400 to-yellow-400 bg-clip-text text-transparent">
+                    Community Feed
+                  </h1>
+                  <p className="text-gray-400 text-sm mt-1">Share and discover community issues • Jan Samadhan</p>
+                </div>
               </div>
               
               {/* Desktop Profile Button */}
@@ -272,13 +301,12 @@ export default function Dashboard() {
                   onClick={() => setShowNotifications(true)}
                   className="relative w-12 h-12 bg-gray-800/50 hover:bg-gray-700 rounded-full flex items-center justify-center transition-all duration-200 border border-gray-700 hover:border-gray-600"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h16a1 1 0 001-1v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a1 1 0 001 1z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v4m0 0l-2-2m2 2l2-2" />
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                   </svg>
                   {unreadCount && unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse min-w-[20px] text-center">
-                      {unreadCount}
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold animate-pulse">
+                      {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
                 </button>
@@ -386,7 +414,7 @@ export default function Dashboard() {
               </svg>
               <input
                 type="text"
-                placeholder="Search Rectify"
+                placeholder="Search Jan Samadhan"
                 className="w-full bg-gray-900/50 border border-gray-700 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-blue-500 transition-colors backdrop-blur-sm"
               />
             </div>

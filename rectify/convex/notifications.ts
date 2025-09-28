@@ -10,7 +10,11 @@ export const createNotification = mutation({
       v.literal("like"),
       v.literal("reply"),
       v.literal("mention"),
-      v.literal("repost")
+      v.literal("repost"),
+      v.literal("emergency_received"),
+      v.literal("emergency_routed"),
+      v.literal("emergency_acknowledged"),
+      v.literal("emergency_update")
     ),
     postId: v.optional(v.id("posts")),
     commentId: v.optional(v.id("comments")),

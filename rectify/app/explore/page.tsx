@@ -7,6 +7,8 @@ import { useAuth } from '../lib/auth';
 import { useRouter } from 'next/navigation';
 import { Id } from "@/convex/_generated/dataModel";
 import ImageCarousel from '../components/ImageCarousel';
+import { LikeButton } from '../components/LikeButton';
+import { NotificationPanel } from '../components/NotificationPanel';
 
 
 export default function ExplorePage() {
@@ -16,9 +18,12 @@ export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const posts = useQuery(api.posts.getAllPosts);
-  const likePost = useMutation(api.posts.toggleLike);
+  const unreadCount = useQuery(api.notifications.getUnreadNotificationCount, 
+    user ? { userId: user._id as Id<"users"> } : "skip"
+  );
   const repostPost = useMutation(api.posts.repostPost);
   const bookmarkPost = useMutation(api.posts.bookmarkPost);
 
@@ -218,12 +223,22 @@ export default function ExplorePage() {
               
               <a 
                 href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowNotifications(true);
+                  setShowMobileMenu(false);
+                }}
                 className="flex items-center space-x-4 px-4 py-4 rounded-2xl hover:bg-gray-800/50 transition-all duration-200 relative"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM5 17h5v5H5v-5zM5 3h5v5H5V3zM15 3h5v5h-5V3z" />
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                 </svg>
                 <span className="text-xl font-medium">Notifications</span>
+                {unreadCount && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-2 py-1 animate-pulse">
+                    {unreadCount}
+                  </span>
+                )}
               </a>
             </nav>
           </div>
@@ -241,15 +256,30 @@ export default function ExplorePage() {
                   </h1>
                   <p className="text-gray-400 text-sm mt-1">Discover community issues from everywhere</p>
                 </div>
-                <button
-                  onClick={() => router.push('/dashboard')}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 rounded-2xl px-6 py-3 font-bold text-sm shadow-lg hover:shadow-xl flex items-center space-x-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>Report Issue</span>
-                </button>
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => setShowNotifications(true)}
+                    className="relative w-12 h-12 bg-gray-800/50 hover:bg-gray-700 rounded-full flex items-center justify-center transition-all duration-200 border border-gray-700 hover:border-gray-600"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                    </svg>
+                    {unreadCount && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold animate-pulse">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => router.push('/dashboard')}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 rounded-2xl px-6 py-3 font-bold text-sm shadow-lg hover:shadow-xl flex items-center space-x-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Report Issue</span>
+                  </button>
+                </div>
               </div>
 
               {/* Search Bar */}
@@ -457,15 +487,11 @@ export default function ExplorePage() {
                             <span className="text-xs lg:text-sm font-medium">{post.reposts}</span>
                           </button>
                           
-                          <button 
-                            onClick={() => likePost({ postId: post._id, userId: user?._id as Id<"users"> })}
-                            className="flex items-center space-x-1 lg:space-x-2 hover:text-red-400 transition-colors p-2 lg:p-3 rounded-xl hover:bg-red-900/10"
-                          >
-                            <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                            </svg>
-                            <span className="text-xs lg:text-sm font-medium">{post.likes}</span>
-                          </button>
+                          <LikeButton 
+                            postId={post._id}
+                            userId={user._id as Id<"users">}
+                            likesCount={post.likes}
+                          />
                           
                           <button 
                             onClick={() => bookmarkPost({ postId: post._id, userId: user?._id as Id<"users"> })}
@@ -491,6 +517,15 @@ export default function ExplorePage() {
           </div>
         </div>
       </div>
+      
+      {/* Notification Panel */}
+      {showNotifications && user && user.role === 'user' && (
+        <NotificationPanel 
+          user={{ ...user, _id: user._id as Id<"users">, createdAt: '' }}
+          isOpen={showNotifications}
+          onClose={() => setShowNotifications(false)}
+        />
+      )}
     </div>
   );
 }

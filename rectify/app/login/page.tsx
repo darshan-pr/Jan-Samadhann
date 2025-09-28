@@ -120,7 +120,9 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="text-3xl font-bold mb-2">Rectify</div>
+          <div className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 via-green-400 to-yellow-400 bg-clip-text text-transparent" style={{ fontFamily: 'Aptos, sans-serif' }}>
+            Jan Samadhan
+          </div>
           <h1 className="text-2xl font-bold mb-2">Welcome Back</h1>
           <p className="text-gray-400">Sign in to your account</p>
         </div>
@@ -255,7 +257,7 @@ export default function LoginPage() {
         {loginType === 'admin' && (
           <div className="mt-6 p-4 bg-gray-800/50 rounded-lg">
             <p className="text-sm text-gray-400 mb-2">Demo Admin Credentials:</p>
-            <p className="text-xs text-gray-500">Email: admin@rectify.com</p>
+            <p className="text-xs text-gray-500">Email: admin@jansamadhan.com</p>
             <p className="text-xs text-gray-500">Password: admin123</p>
           </div>
         )}

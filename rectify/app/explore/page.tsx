@@ -183,8 +183,8 @@ export default function ExplorePage() {
           )}
           
           <div className="space-y-2">
-            <div className="text-3xl font-bold mb-8 px-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Rectify
+            <div className="text-3xl font-bold mb-8 px-3 bg-gradient-to-r from-blue-400 via-green-400 to-yellow-400 bg-clip-text text-transparent" style={{ fontFamily: 'Aptos, sans-serif' }}>
+              Jan Samadhan
             </div>
             
             <nav className="space-y-2">

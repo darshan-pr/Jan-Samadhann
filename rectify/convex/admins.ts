@@ -17,12 +17,12 @@ export const createDefaultAdmin = mutation({
   handler: async (ctx) => {
     const existingAdmin = await ctx.db
       .query("admins")
-      .withIndex("by_email", (q) => q.eq("email", "admin@rectify.com"))
+      .withIndex("by_email", (q) => q.eq("email", "admin@jansamadhan.com"))
       .first();
 
     if (!existingAdmin) {
       await ctx.db.insert("admins", {
-        email: "admin@rectify.com",
+        email: "admin@jansamadhan.com",
         password: "admin123", // In production, this should be hashed
         role: "admin",
         createdAt: new Date().toISOString(),

@@ -15,6 +15,8 @@ export const DepartmentManagement = ({ user }: DepartmentManagementProps) => {
   const [selectedDepartment, setSelectedDepartment] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [creatingDepartment, setCreatingDepartment] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [newDepartment, setNewDepartment] = useState({
     name: '',
     description: '',
@@ -55,6 +57,7 @@ export const DepartmentManagement = ({ user }: DepartmentManagementProps) => {
       return;
     }
 
+    setCreatingDepartment(true);
     try {
       await createDepartment(newDepartment);
       setShowCreateModal(false);
@@ -75,10 +78,13 @@ export const DepartmentManagement = ({ user }: DepartmentManagementProps) => {
     } catch (error) {
       console.error("Error creating department:", error);
       alert("❌ Error creating department. Please try again.");
+    } finally {
+      setCreatingDepartment(false);
     }
   };
 
   const handleStatusUpdate = async (departmentId: string, status: string) => {
+    setUpdatingStatus(departmentId);
     try {
       await updateDepartmentStatus({
         departmentId: departmentId as Id<"departments">,
@@ -88,6 +94,8 @@ export const DepartmentManagement = ({ user }: DepartmentManagementProps) => {
     } catch (error) {
       console.error("Error updating department status:", error);
       alert("❌ Error updating department status");
+    } finally {
+      setUpdatingStatus(null);
     }
   };
 
@@ -101,16 +109,80 @@ export const DepartmentManagement = ({ user }: DepartmentManagementProps) => {
   };
 
   const getCategoryIcon = (category: string) => {
+    const iconClasses = "w-6 h-6";
+    
     switch (category) {
-      case 'infrastructure': return '🏗️';
-      case 'sanitation': return '🧹';
-      case 'transportation': return '🚌';
-      case 'utilities': return '💡';
-      case 'public_safety': return '🚨';
-      case 'environment': return '🌱';
-      default: return '🏢';
+      case 'infrastructure':
+        return (
+          <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        );
+      case 'sanitation':
+        return (
+          <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        );
+      case 'transportation':
+        return (
+          <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+          </svg>
+        );
+      case 'utilities':
+        return (
+          <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        );
+      case 'water_supply':
+        return (
+          <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547A1.934 1.934 0 014 16.684v4.650a2 2 0 002 2h12a2 2 0 002-2v-4.65a1.934 1.934 0 00-.572-1.336zM6 7a1 1 0 011-1h10a1 1 0 011 1v3a1 1 0 01-1 1H7a1 1 0 01-1-1V7zM5 4a1 1 0 011-1h12a1 1 0 011 1v1a1 1 0 01-1 1H6a1 1 0 01-1-1V4z" />
+          </svg>
+        );
+      case 'public_safety':
+        return (
+          <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        );
+      case 'environment':
+        return (
+          <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        );
     }
   };
+
+  // Loading component
+  const LoadingState = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl p-12 border border-slate-200 shadow-sm text-center">
+        <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+          <svg className="w-8 h-8 text-slate-400 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+        <h3 className="text-xl font-bold text-slate-700 mb-2">Loading Departments</h3>
+        <p className="text-slate-500">Please wait while we fetch department information...</p>
+      </div>
+    </div>
+  );
+
+  // Show loading state while data is being fetched
+  if (departments === undefined) {
+    return <LoadingState />;
+  }
 
   if (!departments || departments.length === 0) {
     return (
@@ -264,7 +336,9 @@ export const DepartmentManagement = ({ user }: DepartmentManagementProps) => {
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <div className="text-2xl">{getCategoryIcon(department.category)}</div>
+                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
+                  {getCategoryIcon(department.category)}
+                </div>
                 <div>
                   <h3 className="text-lg font-semibold text-slate-800 line-clamp-1">{department.name}</h3>
                   <p className="text-slate-500 text-sm">{department.head}</p>
@@ -406,13 +480,14 @@ export const DepartmentManagement = ({ user }: DepartmentManagementProps) => {
                   onChange={(e) => setNewDepartment({...newDepartment, category: e.target.value as any})}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:border-blue-500"
                 >
-                  <option value="infrastructure">🏗️ Infrastructure</option>
-                  <option value="sanitation">🧹 Sanitation</option>
-                  <option value="transportation">🚌 Transportation</option>
-                  <option value="utilities">💡 Utilities</option>
-                  <option value="public_safety">🚨 Public Safety</option>
-                  <option value="environment">🌱 Environment</option>
-                  <option value="other">🏢 Other</option>
+                  <option value="infrastructure">Infrastructure</option>
+                  <option value="sanitation">Sanitation</option>
+                  <option value="transportation">Transportation</option>
+                  <option value="utilities">Utilities</option>
+                  <option value="water_supply">Water Supply</option>
+                  <option value="public_safety">Public Safety</option>
+                  <option value="environment">Environment</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
 
@@ -454,9 +529,16 @@ export const DepartmentManagement = ({ user }: DepartmentManagementProps) => {
               </button>
               <button
                 onClick={handleCreateDepartment}
-                className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                disabled={creatingDepartment}
+                className="bg-slate-800 hover:bg-slate-700 disabled:bg-slate-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
               >
-                Create Department
+                {creatingDepartment && (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                <span>{creatingDepartment ? 'Creating...' : 'Create Department'}</span>
               </button>
             </div>
           </div>
@@ -470,7 +552,9 @@ export const DepartmentManagement = ({ user }: DepartmentManagementProps) => {
             <div className="p-6 border-b border-slate-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <span className="text-3xl">{getCategoryIcon(selectedDepartment.category)}</span>
+                  <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600">
+                    {getCategoryIcon(selectedDepartment.category)}
+                  </div>
                   <div>
                     <h3 className="text-xl font-semibold text-slate-800">{selectedDepartment.name}</h3>
                     <p className="text-slate-600 text-sm">Department Head: {selectedDepartment.head}</p>

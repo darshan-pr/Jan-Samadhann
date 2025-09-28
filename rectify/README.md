@@ -1,6 +1,6 @@
-# Rectify
+# Jan Samadhan
 
-A community-driven problem-solving platform built with Next.js 15, React 19, and Convex. Rectify enables users to report and track local infrastructure issues like potholes, water problems, and street lighting issues.
+A community-driven problem-solving platform built with Next.js 15, React 19, and Convex. Jan Samadhan enables users to report and track local infrastructure issues like potholes, water problems, and street lighting issues.
 
 ## Core Technologies
 
@@ -60,7 +60,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## Authentication System
 
 - **User Registration**: Phone-based signup with name, phone, and city
-- **Admin Access**: Email/password login (demo: admin@rectify.com / admin123)
+- **Admin Access**: Email/password login (demo: admin@jansamadhan.com / admin123)
 - **Role-based Routing**: Users → /dashboard, Admins → /admin
 - **Session Management**: Client-side authentication with localStorage persistence
 

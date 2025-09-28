@@ -29,7 +29,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Load theme from localStorage on mount
-    const savedTheme = localStorage.getItem('rectify-theme') as Theme;
+    const savedTheme = localStorage.getItem('jan-samadhan-theme') as Theme;
     if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
       setThemeState(savedTheme);
     }
@@ -39,7 +39,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     // Apply theme to document root
     document.documentElement.setAttribute('data-theme', theme);
     // Save theme to localStorage
-    localStorage.setItem('rectify-theme', theme);
+    localStorage.setItem('jan-samadhan-theme', theme);
   }, [theme]);
 
   const setTheme = (newTheme: Theme) => {

@@ -95,8 +95,10 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="text-3xl font-bold mb-2">Rectify</div>
-          <h1 className="text-2xl font-bold mb-2">Join Rectify</h1>
+          <div className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 via-green-400 to-yellow-400 bg-clip-text text-transparent" style={{ fontFamily: 'Aptos, sans-serif' }}>
+            Jan Samadhan
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Join the Community</h1>
           <p className="text-gray-400">Help improve your community</p>
         </div>
 

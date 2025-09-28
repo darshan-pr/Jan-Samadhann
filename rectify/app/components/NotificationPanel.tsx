@@ -377,7 +377,7 @@ export const NotificationPanel = ({ user, isOpen, onClose }: NotificationPanelPr
               </svg>
             </div>
             <div>
-              <h2 className="text-lg lg:text-xl font-bold text-white">Admin Notifications</h2>
+              <h2 className="text-lg lg:text-xl font-bold text-white">Notifications</h2>
               <p className="text-xs lg:text-sm text-gray-400">
                 Updates and comments from moderators
               </p>

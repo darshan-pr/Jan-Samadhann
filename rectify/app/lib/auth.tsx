@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Check for stored auth data on mount
-    const storedUser = localStorage.getItem('rectify_user');
+    const storedUser = localStorage.getItem('jan_samadhan_user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
@@ -42,12 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (userData: AuthUser) => {
     setUser(userData);
-    localStorage.setItem('rectify_user', JSON.stringify(userData));
+    localStorage.setItem('jan_samadhan_user', JSON.stringify(userData));
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('rectify_user');
+    localStorage.removeItem('jan_samadhan_user');
   };
 
   return (

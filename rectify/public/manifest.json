@@ -1,0 +1,25 @@
+{
+  "name": "Jan Samadhan - Community & Direct Digital Governance",
+  "short_name": "Jan Samadhan",
+  "description": "A digital platform for community-driven problem solving and direct digital governance",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
